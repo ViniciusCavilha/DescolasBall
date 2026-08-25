@@ -3,6 +3,7 @@ export type InputAction =
   | 'moveDown'
   | 'moveLeft'
   | 'moveRight'
+  | 'kick'
   | 'restartMatch';
 
 const ACTION_BINDINGS: Readonly<Record<InputAction, readonly string[]>> = {
@@ -10,6 +11,7 @@ const ACTION_BINDINGS: Readonly<Record<InputAction, readonly string[]>> = {
   moveDown: ['KeyS', 'ArrowDown'],
   moveLeft: ['KeyA', 'ArrowLeft'],
   moveRight: ['KeyD', 'ArrowRight'],
+  kick: ['Space'],
   restartMatch: ['KeyR'],
 };
 

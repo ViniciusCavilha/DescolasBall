@@ -10,6 +10,7 @@ import {
   resolvePlayerBallCollision,
 } from './collision';
 import { InputManager } from './input/InputManager';
+import { applyKick } from './kick';
 import { Match } from './Match';
 import { Vector2 } from './math/Vector2';
 import { Ball } from '../entities/Ball';
@@ -18,6 +19,8 @@ import { Player } from '../entities/Player';
 import { Renderer } from '../rendering/Renderer';
 
 export class Game {
+  private static readonly KICK_FEEDBACK_DURATION_SECONDS = 0.12;
+
   private readonly input = new InputManager();
   private readonly player = new Player(
     new Vector2(
@@ -45,6 +48,7 @@ export class Game {
 
   private readonly entities: Entity[] = [this.player, this.ball];
   private readonly match = new Match(GAME_CONFIG.match);
+  private kickFeedbackRemainingSeconds = 0;
   private loopFps = 0;
   private renderedFrames = 0;
 
@@ -63,25 +67,52 @@ export class Game {
   }
 
   public update(deltaTime: number): void {
+    const safeDeltaTime = Number.isFinite(deltaTime) && deltaTime > 0
+      ? deltaTime
+      : 0;
+    this.kickFeedbackRemainingSeconds = Math.max(
+      this.kickFeedbackRemainingSeconds - safeDeltaTime,
+      0,
+    );
+
     if (this.input.consumeActionPress('restartMatch')) {
       this.match.startNewMatch();
       this.resetEntities();
     }
 
+    const kickJustPressed = this.input.consumeActionPress('kick');
+    const wasPlaying = this.match.isPlaying();
     this.match.update(deltaTime);
-    if (!this.match.isPlaying()) {
+    if (!wasPlaying || !this.match.isPlaying()) {
       return;
     }
 
-    this.updatePhysics(deltaTime);
+    this.updatePhysics(deltaTime, kickJustPressed);
   }
 
-  private updatePhysics(deltaTime: number): void {
+  private updatePhysics(deltaTime: number, kickJustPressed: boolean): void {
     this.player.update(deltaTime);
     this.player.constrainToWorld(
       GAME_CONFIG.worldWidth,
       GAME_CONFIG.worldHeight,
     );
+
+    if (kickJustPressed && this.player.canKick()) {
+      const kick = applyKick(
+        this.player,
+        this.ball,
+        GAME_CONFIG.player.kickRange,
+        GAME_CONFIG.player.kickForce,
+        GAME_CONFIG.ball.maximumSpeed,
+      );
+
+      if (kick) {
+        this.ball.position = kick.position;
+        this.ball.velocity = kick.velocity;
+        this.player.startKickCooldown();
+        this.kickFeedbackRemainingSeconds = Game.KICK_FEEDBACK_DURATION_SECONDS;
+      }
+    }
 
     const previousBallPosition = this.ball.position;
     this.ball.update(deltaTime);
@@ -127,6 +158,13 @@ export class Game {
       this.renderer.drawEntity(entity);
     }
 
+    if (this.kickFeedbackRemainingSeconds > 0) {
+      this.renderer.drawKickFeedback(
+        this.player.position,
+        this.player.radius + 13,
+      );
+    }
+
     this.renderer.drawText(
       'DescolasBall',
       32,
@@ -144,7 +182,7 @@ export class Game {
         font: '18px system-ui, sans-serif',
       },
     );
-    this.renderer.drawText('Mover: WASD ou setas', 32, 108, {
+    this.renderer.drawText('Mover: WASD/setas · Chutar: ESPAÇO', 32, 108, {
       font: '16px system-ui, sans-serif',
     });
     this.renderer.drawMatchHud(this.match.getView());
@@ -181,6 +219,7 @@ export class Game {
   }
 
   private resetEntities(): void {
+    this.kickFeedbackRemainingSeconds = 0;
     this.player.reset(
       new Vector2(
         GAME_CONFIG.spawn.playerPosition.x,

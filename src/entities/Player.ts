@@ -9,6 +9,7 @@ export class Player implements Entity {
   public position: Vector2;
   public velocity = Vector2.ZERO;
   public orientation = new Vector2(1, 0);
+  private kickCooldownRemainingSeconds = 0;
 
   public readonly radius = GAME_CONFIG.player.radius;
   public readonly maximumSpeed = GAME_CONFIG.player.maximumSpeed;
@@ -23,6 +24,14 @@ export class Player implements Entity {
   }
 
   public update(deltaTime: number): void {
+    const safeDeltaTime = Number.isFinite(deltaTime) && deltaTime > 0
+      ? deltaTime
+      : 0;
+    this.kickCooldownRemainingSeconds = Math.max(
+      this.kickCooldownRemainingSeconds - safeDeltaTime,
+      0,
+    );
+
     const inputDirection = this.getInputDirection();
 
     if (inputDirection.magnitude() > 0) {
@@ -76,6 +85,15 @@ export class Player implements Entity {
     this.position = position;
     this.velocity = Vector2.ZERO;
     this.orientation = new Vector2(1, 0);
+    this.kickCooldownRemainingSeconds = 0;
+  }
+
+  public canKick(): boolean {
+    return this.kickCooldownRemainingSeconds <= 0;
+  }
+
+  public startKickCooldown(): void {
+    this.kickCooldownRemainingSeconds = GAME_CONFIG.player.kickCooldownSeconds;
   }
 
   private getInputDirection(): Vector2 {

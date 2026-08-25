@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import type { FieldGeometry } from '../core/field';
 import type { MatchView } from '../core/Match';
+import type { Vector2 } from '../core/math/Vector2';
 import type { Entity } from '../entities/Entity';
 
 export class Renderer {
@@ -163,6 +164,14 @@ export class Renderer {
 
   public drawEntity(entity: Entity): void {
     entity.render(this);
+  }
+
+  public drawKickFeedback(position: Vector2, radius: number): void {
+    this.context.beginPath();
+    this.context.arc(position.x, position.y, radius, 0, Math.PI * 2);
+    this.context.strokeStyle = GAME_CONFIG.accentColor;
+    this.context.lineWidth = 7;
+    this.context.stroke();
   }
 
   public endFrame(): void {

@@ -76,10 +76,7 @@ export function resolvePlayerBallCollision(
   const safeNormal = normal.magnitude() > 0
     ? normal
     : DEFAULT_COLLISION_NORMAL;
-  const safeOverlap = Number.isFinite(collision.overlap)
-    ? Math.max(collision.overlap, 0)
-    : 0;
-  const correctedPosition = ball.position.add(safeNormal.scale(safeOverlap));
+  const correctedPosition = resolveCircleOverlap(ball.position, collision);
 
   const playerVelocity = player.velocity.isFinite()
     ? player.velocity
@@ -111,6 +108,21 @@ export function resolvePlayerBallCollision(
       : ball.position,
     velocity: ballVelocity.isFinite() ? ballVelocity : Vector2.ZERO,
   };
+}
+
+export function resolveCircleOverlap(
+  circlePosition: Vector2,
+  collision: CircleCollisionInfo,
+): Vector2 {
+  const normal = collision.normal.normalize();
+  const safeNormal = normal.magnitude() > 0
+    ? normal
+    : DEFAULT_COLLISION_NORMAL;
+  const safeOverlap = Number.isFinite(collision.overlap)
+    ? Math.max(collision.overlap, 0)
+    : 0;
+  const correctedPosition = circlePosition.add(safeNormal.scale(safeOverlap));
+  return correctedPosition.isFinite() ? correctedPosition : circlePosition;
 }
 
 export function resolveCircleSegmentCollision(
