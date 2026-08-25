@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import { InputManager } from './input/InputManager';
 import { Vector2 } from './math/Vector2';
+import { Ball } from '../entities/Ball';
 import type { Entity } from '../entities/Entity';
 import { Player } from '../entities/Player';
 import { Renderer } from '../rendering/Renderer';
@@ -11,8 +12,18 @@ export class Game {
     new Vector2(GAME_CONFIG.worldWidth / 2, GAME_CONFIG.worldHeight / 2),
     this.input,
   );
+  private readonly ball = new Ball(
+    new Vector2(
+      GAME_CONFIG.ball.initialPosition.x,
+      GAME_CONFIG.ball.initialPosition.y,
+    ),
+    new Vector2(
+      GAME_CONFIG.ball.initialVelocity.x,
+      GAME_CONFIG.ball.initialVelocity.y,
+    ),
+  );
 
-  private readonly entities: Entity[] = [this.player];
+  private readonly entities: Entity[] = [this.player, this.ball];
   private loopFps = 0;
   private renderedFrames = 0;
 
@@ -24,6 +35,10 @@ export class Game {
     }
 
     this.player.constrainToWorld(
+      GAME_CONFIG.worldWidth,
+      GAME_CONFIG.worldHeight,
+    );
+    this.ball.constrainToWorld(
       GAME_CONFIG.worldWidth,
       GAME_CONFIG.worldHeight,
     );

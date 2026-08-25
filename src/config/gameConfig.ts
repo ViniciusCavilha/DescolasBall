@@ -1,6 +1,9 @@
+const WORLD_WIDTH = 1280;
+const WORLD_HEIGHT = 720;
+
 export const GAME_CONFIG = {
-  worldWidth: 1280,
-  worldHeight: 720,
+  worldWidth: WORLD_WIDTH,
+  worldHeight: WORLD_HEIGHT,
   targetFps: 60,
   maxFrameDeltaSeconds: 0.25,
   backgroundColor: '#10182b',
@@ -15,6 +18,20 @@ export const GAME_CONFIG = {
     fillColor: '#5ee7a8',
     strokeColor: '#eafff5',
     strokeWidth: 5,
+  },
+  ball: {
+    radius: 18,
+    initialPosition: {
+      x: WORLD_WIDTH / 2,
+      y: WORLD_HEIGHT / 2,
+    },
+    initialVelocity: {
+      x: 0,
+      y: 0,
+    },
+    fillColor: '#f8fafc',
+    strokeColor: '#334155',
+    strokeWidth: 4,
   },
 } as const;
 

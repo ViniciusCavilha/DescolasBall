@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import type { InputManager } from '../core/input/InputManager';
 import { Vector2 } from '../core/math/Vector2';
+import { clampCircleToWorldBounds } from '../core/math/worldBounds';
 import type { Renderer } from '../rendering/Renderer';
 import type { Entity } from './Entity';
 
@@ -57,22 +58,17 @@ export class Player implements Entity {
   }
 
   public constrainToWorld(worldWidth: number, worldHeight: number): void {
-    const clampedX = Math.min(
-      Math.max(this.position.x, this.radius),
-      worldWidth - this.radius,
-    );
-    const clampedY = Math.min(
-      Math.max(this.position.y, this.radius),
-      worldHeight - this.radius,
+    const constraint = clampCircleToWorldBounds(
+      this.position,
+      this.radius,
+      worldWidth,
+      worldHeight,
     );
 
-    const hitHorizontalBoundary = clampedX !== this.position.x;
-    const hitVerticalBoundary = clampedY !== this.position.y;
-
-    this.position = new Vector2(clampedX, clampedY);
+    this.position = constraint.position;
     this.velocity = new Vector2(
-      hitHorizontalBoundary ? 0 : this.velocity.x,
-      hitVerticalBoundary ? 0 : this.velocity.y,
+      constraint.clampedHorizontally ? 0 : this.velocity.x,
+      constraint.clampedVertically ? 0 : this.velocity.y,
     );
   }
 
