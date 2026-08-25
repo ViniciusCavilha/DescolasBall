@@ -1,9 +1,8 @@
-import { GAME_CONFIG } from '../config/gameConfig';
+import { FIXED_DELTA_TIME, GAME_CONFIG } from '../config/gameConfig';
 import {
   createFieldGeometry,
   detectGoalCrossing,
   hasWallTunnelingRisk,
-  type FieldSide,
 } from './field';
 import {
   detectCircleCollision,
@@ -11,19 +10,12 @@ import {
   resolvePlayerBallCollision,
 } from './collision';
 import { InputManager } from './input/InputManager';
+import { Match } from './Match';
 import { Vector2 } from './math/Vector2';
-import { FIXED_DELTA_TIME } from '../config/gameConfig';
 import { Ball } from '../entities/Ball';
 import type { Entity } from '../entities/Entity';
 import { Player } from '../entities/Player';
 import { Renderer } from '../rendering/Renderer';
-
-type MatchState = 'playing' | 'goal' | 'resetting';
-
-interface Score {
-  left: number;
-  right: number;
-}
 
 export class Game {
   private readonly input = new InputManager();
@@ -52,9 +44,7 @@ export class Game {
   );
 
   private readonly entities: Entity[] = [this.player, this.ball];
-  private score: Score = { left: 0, right: 0 };
-  private matchState: MatchState = 'playing';
-  private stateElapsedSeconds = 0;
+  private readonly match = new Match(GAME_CONFIG.match);
   private loopFps = 0;
   private renderedFrames = 0;
 
@@ -73,11 +63,20 @@ export class Game {
   }
 
   public update(deltaTime: number): void {
-    if (this.matchState !== 'playing') {
-      this.updatePausedMatch(deltaTime);
+    if (this.input.consumeActionPress('restartMatch')) {
+      this.match.startNewMatch();
+      this.resetEntities();
+    }
+
+    this.match.update(deltaTime);
+    if (!this.match.isPlaying()) {
       return;
     }
 
+    this.updatePhysics(deltaTime);
+  }
+
+  private updatePhysics(deltaTime: number): void {
     this.player.update(deltaTime);
     this.player.constrainToWorld(
       GAME_CONFIG.worldWidth,
@@ -113,7 +112,8 @@ export class Game {
       this.field,
     );
     if (scoringSide) {
-      this.registerGoal(scoringSide);
+      this.match.registerGoal(scoringSide);
+      this.resetEntities();
     }
   }
 
@@ -147,7 +147,7 @@ export class Game {
     this.renderer.drawText('Mover: WASD ou setas', 32, 108, {
       font: '16px system-ui, sans-serif',
     });
-    this.renderer.drawScoreboard(this.score, this.matchState);
+    this.renderer.drawMatchHud(this.match.getView());
     this.renderer.endFrame();
   }
 
@@ -178,38 +178,6 @@ export class Game {
         }
       }
     }
-  }
-
-  private registerGoal(scoringSide: FieldSide): void {
-    this.score = {
-      ...this.score,
-      [scoringSide]: this.score[scoringSide] + 1,
-    };
-    this.matchState = 'goal';
-    this.stateElapsedSeconds = 0;
-    this.player.velocity = Vector2.ZERO;
-    this.ball.velocity = Vector2.ZERO;
-  }
-
-  private updatePausedMatch(deltaTime: number): void {
-    if (this.matchState === 'goal') {
-      const safeDeltaTime = Number.isFinite(deltaTime) && deltaTime > 0
-        ? deltaTime
-        : 0;
-      this.stateElapsedSeconds += safeDeltaTime;
-
-      if (
-        this.stateElapsedSeconds
-        >= GAME_CONFIG.match.goalPauseDurationSeconds
-      ) {
-        this.matchState = 'resetting';
-      }
-      return;
-    }
-
-    this.resetEntities();
-    this.matchState = 'playing';
-    this.stateElapsedSeconds = 0;
   }
 
   private resetEntities(): void {

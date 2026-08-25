@@ -2,19 +2,22 @@ export type InputAction =
   | 'moveUp'
   | 'moveDown'
   | 'moveLeft'
-  | 'moveRight';
+  | 'moveRight'
+  | 'restartMatch';
 
 const ACTION_BINDINGS: Readonly<Record<InputAction, readonly string[]>> = {
   moveUp: ['KeyW', 'ArrowUp'],
   moveDown: ['KeyS', 'ArrowDown'],
   moveLeft: ['KeyA', 'ArrowLeft'],
   moveRight: ['KeyD', 'ArrowRight'],
+  restartMatch: ['KeyR'],
 };
 
-const MOVEMENT_KEYS = new Set(Object.values(ACTION_BINDINGS).flat());
+const MANAGED_KEYS = new Set(Object.values(ACTION_BINDINGS).flat());
 
 export class InputManager {
   private readonly pressedKeys = new Set<string>();
+  private readonly pressedActions = new Set<InputAction>();
 
   public constructor() {
     window.addEventListener('keydown', this.handleKeyDown);
@@ -27,6 +30,12 @@ export class InputManager {
     return ACTION_BINDINGS[action].some((key) => this.pressedKeys.has(key));
   }
 
+  public consumeActionPress(action: InputAction): boolean {
+    const wasPressed = this.pressedActions.has(action);
+    this.pressedActions.delete(action);
+    return wasPressed;
+  }
+
   public dispose(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
@@ -36,16 +45,20 @@ export class InputManager {
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (!MOVEMENT_KEYS.has(event.code)) {
+    if (!MANAGED_KEYS.has(event.code)) {
       return;
     }
 
     event.preventDefault();
+    const action = this.findAction(event.code);
+    if (!this.pressedKeys.has(event.code) && action) {
+      this.pressedActions.add(action);
+    }
     this.pressedKeys.add(event.code);
   };
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
-    if (!MOVEMENT_KEYS.has(event.code)) {
+    if (!MANAGED_KEYS.has(event.code)) {
       return;
     }
 
@@ -61,5 +74,12 @@ export class InputManager {
 
   private readonly clearPressedKeys = (): void => {
     this.pressedKeys.clear();
+    this.pressedActions.clear();
   };
+
+  private findAction(key: string): InputAction | null {
+    const action = (Object.keys(ACTION_BINDINGS) as InputAction[])
+      .find((candidate) => ACTION_BINDINGS[candidate].includes(key));
+    return action ?? null;
+  }
 }

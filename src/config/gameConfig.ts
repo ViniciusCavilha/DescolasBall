@@ -46,7 +46,10 @@ export const GAME_CONFIG = {
     penaltyAreaHeight: 360,
   },
   match: {
+    durationSeconds: 5 * 60,
     goalPauseDurationSeconds: 2,
+    countdownStartValue: 3,
+    countdownStepDurationSeconds: 1,
   },
   spawn: {
     ballPosition: {

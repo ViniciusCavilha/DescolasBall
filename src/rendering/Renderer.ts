@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import type { FieldGeometry } from '../core/field';
+import type { MatchView } from '../core/Match';
 import type { Entity } from '../entities/Entity';
 
 export class Renderer {
@@ -83,30 +84,41 @@ export class Renderer {
     }
   }
 
-  public drawScoreboard(
-    score: Readonly<{ left: number; right: number }>,
-    matchState: 'playing' | 'goal' | 'resetting',
-  ): void {
+  public drawMatchHud(match: MatchView): void {
     const centerX = GAME_CONFIG.worldWidth / 2;
     this.context.fillStyle = 'rgba(9, 13, 24, 0.82)';
-    this.context.fillRect(centerX - 150, 20, 300, 82);
+    this.context.fillRect(centerX - 180, 20, 360, 82);
 
     this.drawText(
-      `ESQUERDA  ${score.left}  ×  ${score.right}  DIREITA`,
+      `ESQUERDA  ${match.score.left}  ×  ${match.score.right}  DIREITA`,
       centerX,
-      50,
+      47,
       {
         font: '700 24px system-ui, sans-serif',
         align: 'center',
       },
     );
+    this.drawText(match.clockText, centerX, 79, {
+      color: GAME_CONFIG.accentColor,
+      font: '700 20px ui-monospace, monospace',
+      align: 'center',
+    });
 
-    if (matchState !== 'playing') {
-      this.drawText(matchState === 'goal' ? 'GOL!' : 'Reiniciando…', centerX, 82, {
+    if (match.overlayText) {
+      this.context.fillStyle = 'rgba(9, 13, 24, 0.72)';
+      this.context.fillRect(centerX - 260, 125, 520, 135);
+      this.drawText(match.overlayText, centerX, 170, {
         color: GAME_CONFIG.accentColor,
-        font: '700 18px system-ui, sans-serif',
+        font: '800 48px system-ui, sans-serif',
         align: 'center',
       });
+
+      if (match.restartHint) {
+        this.drawText('Pressione R para iniciar uma nova partida', centerX, 225, {
+          font: '18px system-ui, sans-serif',
+          align: 'center',
+        });
+      }
     }
   }
 
