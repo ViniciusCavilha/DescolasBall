@@ -1,4 +1,8 @@
 import { GAME_CONFIG } from '../config/gameConfig';
+import {
+  detectCircleCollision,
+  resolvePlayerBallCollision,
+} from './collision';
 import { InputManager } from './input/InputManager';
 import { Vector2 } from './math/Vector2';
 import { Ball } from '../entities/Ball';
@@ -30,18 +34,39 @@ export class Game {
   public constructor(private readonly renderer: Renderer) {}
 
   public update(deltaTime: number): void {
-    for (const entity of this.entities) {
-      entity.update(deltaTime);
-    }
-
+    this.player.update(deltaTime);
     this.player.constrainToWorld(
       GAME_CONFIG.worldWidth,
       GAME_CONFIG.worldHeight,
     );
+
+    this.ball.update(deltaTime);
     this.ball.constrainToWorld(
       GAME_CONFIG.worldWidth,
       GAME_CONFIG.worldHeight,
     );
+
+    const collision = detectCircleCollision(
+      this.player,
+      this.ball,
+      this.player.orientation,
+    );
+
+    if (collision) {
+      const resolution = resolvePlayerBallCollision(
+        this.player,
+        this.ball,
+        collision,
+        GAME_CONFIG.ball.collisionTransferFactor,
+        GAME_CONFIG.ball.maximumSpeed,
+      );
+      this.ball.position = resolution.position;
+      this.ball.velocity = resolution.velocity;
+      this.ball.constrainToWorld(
+        GAME_CONFIG.worldWidth,
+        GAME_CONFIG.worldHeight,
+      );
+    }
   }
 
   public render(): void {

@@ -8,6 +8,8 @@ export class Ball implements Entity {
   public readonly radius = GAME_CONFIG.ball.radius;
   public readonly fillColor = GAME_CONFIG.ball.fillColor;
   public readonly strokeColor = GAME_CONFIG.ball.strokeColor;
+  public readonly friction = GAME_CONFIG.ball.friction;
+  public readonly maximumSpeed = GAME_CONFIG.ball.maximumSpeed;
 
   public constructor(
     public position: Vector2,
@@ -15,7 +17,46 @@ export class Ball implements Entity {
   ) {}
 
   public update(deltaTime: number): void {
-    this.position = this.position.add(this.velocity.scale(deltaTime));
+    const safeDeltaTime = Number.isFinite(deltaTime) && deltaTime > 0
+      ? deltaTime
+      : 0;
+
+    if (!this.position.isFinite()) {
+      this.position = new Vector2(
+        GAME_CONFIG.ball.initialPosition.x,
+        GAME_CONFIG.ball.initialPosition.y,
+      );
+    }
+
+    if (!this.velocity.isFinite()) {
+      this.velocity = Vector2.ZERO;
+    }
+
+    this.velocity = this.velocity.clampMagnitude(this.maximumSpeed);
+
+    if (this.velocity.magnitude() < GAME_CONFIG.ball.minimumSpeedThreshold) {
+      this.velocity = Vector2.ZERO;
+    }
+
+    const nextPosition = this.position.add(this.velocity.scale(safeDeltaTime));
+    this.position = nextPosition.isFinite()
+      ? nextPosition
+      : new Vector2(
+        GAME_CONFIG.ball.initialPosition.x,
+        GAME_CONFIG.ball.initialPosition.y,
+      );
+
+    const safeFriction = Number.isFinite(this.friction)
+      ? Math.max(this.friction, 0)
+      : 0;
+    const frictionDecay = Math.exp(-safeFriction * safeDeltaTime);
+    this.velocity = this.velocity
+      .scale(frictionDecay)
+      .clampMagnitude(this.maximumSpeed);
+
+    if (this.velocity.magnitude() < GAME_CONFIG.ball.minimumSpeedThreshold) {
+      this.velocity = Vector2.ZERO;
+    }
   }
 
   public render(renderer: Renderer): void {

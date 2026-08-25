@@ -1,0 +1,110 @@
+import { Vector2 } from './math/Vector2';
+
+export interface Circle {
+  readonly position: Vector2;
+  readonly radius: number;
+}
+
+export interface MovingCircle extends Circle {
+  readonly velocity: Vector2;
+}
+
+export interface CircleCollisionInfo {
+  normal: Vector2;
+  overlap: number;
+}
+
+export interface BallCollisionResolution {
+  position: Vector2;
+  velocity: Vector2;
+}
+
+const COLLISION_EPSILON = 1e-8;
+const DEFAULT_COLLISION_NORMAL = new Vector2(1, 0);
+
+export function detectCircleCollision(
+  player: Circle,
+  ball: Circle,
+  fallbackNormal = DEFAULT_COLLISION_NORMAL,
+): CircleCollisionInfo | null {
+  if (
+    !player.position.isFinite()
+    || !ball.position.isFinite()
+    || !Number.isFinite(player.radius)
+    || !Number.isFinite(ball.radius)
+  ) {
+    return null;
+  }
+
+  const combinedRadius = Math.max(player.radius, 0) + Math.max(ball.radius, 0);
+  const offset = ball.position.subtract(player.position);
+  const distanceSquared = offset.dot(offset);
+
+  if (distanceSquared >= combinedRadius * combinedRadius) {
+    return null;
+  }
+
+  if (distanceSquared <= COLLISION_EPSILON * COLLISION_EPSILON) {
+    const safeFallback = fallbackNormal.normalize();
+    return {
+      normal: safeFallback.magnitude() > 0
+        ? safeFallback
+        : DEFAULT_COLLISION_NORMAL,
+      overlap: combinedRadius,
+    };
+  }
+
+  const distance = Math.sqrt(distanceSquared);
+  return {
+    normal: offset.scale(1 / distance),
+    overlap: combinedRadius - distance,
+  };
+}
+
+export function resolvePlayerBallCollision(
+  player: MovingCircle,
+  ball: MovingCircle,
+  collision: CircleCollisionInfo,
+  transferFactor: number,
+  maximumBallSpeed: number,
+): BallCollisionResolution {
+  const normal = collision.normal.normalize();
+  const safeNormal = normal.magnitude() > 0
+    ? normal
+    : DEFAULT_COLLISION_NORMAL;
+  const safeOverlap = Number.isFinite(collision.overlap)
+    ? Math.max(collision.overlap, 0)
+    : 0;
+  const correctedPosition = ball.position.add(safeNormal.scale(safeOverlap));
+
+  const playerVelocity = player.velocity.isFinite()
+    ? player.velocity
+    : Vector2.ZERO;
+  let ballVelocity = ball.velocity.isFinite()
+    ? ball.velocity
+    : Vector2.ZERO;
+
+  const playerNormalSpeed = playerVelocity.dot(safeNormal);
+  const ballNormalSpeed = ballVelocity.dot(safeNormal);
+  const safeTransferFactor = Number.isFinite(transferFactor)
+    ? Math.max(transferFactor, 0)
+    : 0;
+  const targetNormalSpeed = playerNormalSpeed > 0
+    ? playerNormalSpeed * safeTransferFactor
+    : 0;
+
+  if (ballNormalSpeed < targetNormalSpeed) {
+    ballVelocity = ballVelocity.add(
+      safeNormal.scale(targetNormalSpeed - ballNormalSpeed),
+    );
+  }
+
+  ballVelocity = ballVelocity.clampMagnitude(maximumBallSpeed);
+
+  return {
+    position: correctedPosition.isFinite()
+      ? correctedPosition
+      : ball.position,
+    velocity: ballVelocity.isFinite() ? ballVelocity : Vector2.ZERO,
+  };
+}

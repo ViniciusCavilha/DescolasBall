@@ -32,6 +32,10 @@ export const GAME_CONFIG = {
     fillColor: '#f8fafc',
     strokeColor: '#334155',
     strokeWidth: 4,
+    friction: 1.35,
+    maximumSpeed: 720,
+    minimumSpeedThreshold: 1,
+    collisionTransferFactor: 1.15,
   },
 } as const;
 
