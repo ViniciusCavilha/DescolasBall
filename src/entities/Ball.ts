@@ -1,6 +1,5 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import { Vector2 } from '../core/math/Vector2';
-import { clampCircleToWorldBounds } from '../core/math/worldBounds';
 import type { Renderer } from '../rendering/Renderer';
 import type { Entity } from './Entity';
 
@@ -23,8 +22,8 @@ export class Ball implements Entity {
 
     if (!this.position.isFinite()) {
       this.position = new Vector2(
-        GAME_CONFIG.ball.initialPosition.x,
-        GAME_CONFIG.ball.initialPosition.y,
+        GAME_CONFIG.spawn.ballPosition.x,
+        GAME_CONFIG.spawn.ballPosition.y,
       );
     }
 
@@ -42,8 +41,8 @@ export class Ball implements Entity {
     this.position = nextPosition.isFinite()
       ? nextPosition
       : new Vector2(
-        GAME_CONFIG.ball.initialPosition.x,
-        GAME_CONFIG.ball.initialPosition.y,
+        GAME_CONFIG.spawn.ballPosition.x,
+        GAME_CONFIG.spawn.ballPosition.y,
       );
 
     const safeFriction = Number.isFinite(this.friction)
@@ -67,18 +66,8 @@ export class Ball implements Entity {
     });
   }
 
-  public constrainToWorld(worldWidth: number, worldHeight: number): void {
-    const constraint = clampCircleToWorldBounds(
-      this.position,
-      this.radius,
-      worldWidth,
-      worldHeight,
-    );
-
-    this.position = constraint.position;
-    this.velocity = new Vector2(
-      constraint.clampedHorizontally ? 0 : this.velocity.x,
-      constraint.clampedVertically ? 0 : this.velocity.y,
-    );
+  public reset(position: Vector2): void {
+    this.position = position;
+    this.velocity = Vector2.ZERO;
   }
 }

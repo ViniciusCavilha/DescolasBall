@@ -72,6 +72,12 @@ export class Player implements Entity {
     );
   }
 
+  public reset(position: Vector2): void {
+    this.position = position;
+    this.velocity = Vector2.ZERO;
+    this.orientation = new Vector2(1, 0);
+  }
+
   private getInputDirection(): Vector2 {
     const horizontal = Number(this.input.isActionActive('moveRight'))
       - Number(this.input.isActionActive('moveLeft'));

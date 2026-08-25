@@ -19,6 +19,10 @@ export interface BallCollisionResolution {
   velocity: Vector2;
 }
 
+export interface SegmentCollisionResolution extends BallCollisionResolution {
+  collided: boolean;
+}
+
 const COLLISION_EPSILON = 1e-8;
 const DEFAULT_COLLISION_NORMAL = new Vector2(1, 0);
 
@@ -107,4 +111,81 @@ export function resolvePlayerBallCollision(
       : ball.position,
     velocity: ballVelocity.isFinite() ? ballVelocity : Vector2.ZERO,
   };
+}
+
+export function resolveCircleSegmentCollision(
+  circle: MovingCircle,
+  segmentStart: Vector2,
+  segmentEnd: Vector2,
+  restitution: number,
+): SegmentCollisionResolution {
+  const segment = segmentEnd.subtract(segmentStart);
+  const segmentLengthSquared = segment.dot(segment);
+
+  if (segmentLengthSquared <= COLLISION_EPSILON * COLLISION_EPSILON) {
+    return {
+      position: circle.position,
+      velocity: circle.velocity,
+      collided: false,
+    };
+  }
+
+  const progress = Math.min(
+    Math.max(
+      circle.position.subtract(segmentStart).dot(segment)
+        / segmentLengthSquared,
+      0,
+    ),
+    1,
+  );
+  const closestPoint = segmentStart.add(segment.scale(progress));
+  const offset = circle.position.subtract(closestPoint);
+  const distanceSquared = offset.dot(offset);
+
+  if (distanceSquared >= circle.radius * circle.radius) {
+    return {
+      position: circle.position,
+      velocity: circle.velocity,
+      collided: false,
+    };
+  }
+
+  const distance = Math.sqrt(Math.max(distanceSquared, 0));
+  const normal = distance > COLLISION_EPSILON
+    ? offset.scale(1 / distance)
+    : getSegmentFallbackNormal(segment, circle.velocity);
+  const overlap = circle.radius - distance;
+  const correctedPosition = circle.position.add(normal.scale(overlap));
+  const safeRestitution = Number.isFinite(restitution)
+    ? Math.min(Math.max(restitution, 0), 1)
+    : 0;
+  const safeVelocity = circle.velocity.isFinite()
+    ? circle.velocity
+    : Vector2.ZERO;
+  const normalSpeed = safeVelocity.dot(normal);
+  const reflectedVelocity = normalSpeed < 0
+    ? safeVelocity.subtract(normal.scale((1 + safeRestitution) * normalSpeed))
+    : safeVelocity;
+
+  return {
+    position: correctedPosition.isFinite()
+      ? correctedPosition
+      : circle.position,
+    velocity: reflectedVelocity.isFinite()
+      ? reflectedVelocity
+      : Vector2.ZERO,
+    collided: true,
+  };
+}
+
+function getSegmentFallbackNormal(
+  segment: Vector2,
+  velocity: Vector2,
+): Vector2 {
+  let normal = new Vector2(-segment.y, segment.x).normalize();
+  if (velocity.isFinite() && velocity.dot(normal) > 0) {
+    normal = normal.scale(-1);
+  }
+
+  return normal.magnitude() > 0 ? normal : DEFAULT_COLLISION_NORMAL;
 }

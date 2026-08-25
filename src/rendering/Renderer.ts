@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from '../config/gameConfig';
+import type { FieldGeometry } from '../core/field';
 import type { Entity } from '../entities/Entity';
 
 export class Renderer {
@@ -15,12 +16,98 @@ export class Renderer {
 
   public beginFrame(): void {
     this.context.save();
-    this.context.setTransform(this.scaleX, 0, 0, this.scaleY, 0, 0);
+    this.context.setTransform(
+      this.scaleX,
+      0,
+      0,
+      this.scaleY,
+      GAME_CONFIG.field.goalDepth * this.scaleX,
+      0,
+    );
   }
 
   public clear(color: string): void {
     this.context.fillStyle = color;
-    this.context.fillRect(0, 0, GAME_CONFIG.worldWidth, GAME_CONFIG.worldHeight);
+    this.context.fillRect(
+      -GAME_CONFIG.field.goalDepth,
+      0,
+      GAME_CONFIG.worldWidth + GAME_CONFIG.field.goalDepth * 2,
+      GAME_CONFIG.worldHeight,
+    );
+  }
+
+  public drawField(field: FieldGeometry): void {
+    const fieldConfig = GAME_CONFIG.field;
+    this.context.fillStyle = fieldConfig.surfaceColor;
+    this.context.fillRect(0, 0, field.width, field.height);
+
+    this.context.strokeStyle = fieldConfig.lineColor;
+    this.context.lineWidth = fieldConfig.lineWidth;
+    this.context.beginPath();
+    this.context.moveTo(field.width / 2, 0);
+    this.context.lineTo(field.width / 2, field.height);
+    this.context.stroke();
+
+    this.context.beginPath();
+    this.context.arc(
+      field.width / 2,
+      field.height / 2,
+      fieldConfig.centerCircleRadius,
+      0,
+      Math.PI * 2,
+    );
+    this.context.stroke();
+
+    const penaltyAreaTop = (field.height - fieldConfig.penaltyAreaHeight) / 2;
+    this.context.strokeRect(
+      0,
+      penaltyAreaTop,
+      fieldConfig.penaltyAreaWidth,
+      fieldConfig.penaltyAreaHeight,
+    );
+    this.context.strokeRect(
+      field.width - fieldConfig.penaltyAreaWidth,
+      penaltyAreaTop,
+      fieldConfig.penaltyAreaWidth,
+      fieldConfig.penaltyAreaHeight,
+    );
+
+    for (const wall of field.walls) {
+      this.context.strokeStyle = wall.kind === 'goal'
+        ? fieldConfig.goalColor
+        : fieldConfig.lineColor;
+      this.context.beginPath();
+      this.context.moveTo(wall.start.x, wall.start.y);
+      this.context.lineTo(wall.end.x, wall.end.y);
+      this.context.stroke();
+    }
+  }
+
+  public drawScoreboard(
+    score: Readonly<{ left: number; right: number }>,
+    matchState: 'playing' | 'goal' | 'resetting',
+  ): void {
+    const centerX = GAME_CONFIG.worldWidth / 2;
+    this.context.fillStyle = 'rgba(9, 13, 24, 0.82)';
+    this.context.fillRect(centerX - 150, 20, 300, 82);
+
+    this.drawText(
+      `ESQUERDA  ${score.left}  ×  ${score.right}  DIREITA`,
+      centerX,
+      50,
+      {
+        font: '700 24px system-ui, sans-serif',
+        align: 'center',
+      },
+    );
+
+    if (matchState !== 'playing') {
+      this.drawText(matchState === 'goal' ? 'GOL!' : 'Reiniciando…', centerX, 82, {
+        color: GAME_CONFIG.accentColor,
+        font: '700 18px system-ui, sans-serif',
+        align: 'center',
+      });
+    }
   }
 
   public drawText(
@@ -77,7 +164,9 @@ export class Renderer {
   private readonly resize = (): void => {
     const availableWidth = window.innerWidth;
     const availableHeight = window.innerHeight;
-    const worldAspectRatio = GAME_CONFIG.worldWidth / GAME_CONFIG.worldHeight;
+    const visibleWorldWidth = GAME_CONFIG.worldWidth
+      + GAME_CONFIG.field.goalDepth * 2;
+    const worldAspectRatio = visibleWorldWidth / GAME_CONFIG.worldHeight;
 
     let displayWidth = availableWidth;
     let displayHeight = displayWidth / worldAspectRatio;
@@ -93,7 +182,7 @@ export class Renderer {
     this.canvas.width = Math.max(Math.round(displayWidth * pixelRatio), 1);
     this.canvas.height = Math.max(Math.round(displayHeight * pixelRatio), 1);
 
-    this.scaleX = this.canvas.width / GAME_CONFIG.worldWidth;
+    this.scaleX = this.canvas.width / visibleWorldWidth;
     this.scaleY = this.canvas.height / GAME_CONFIG.worldHeight;
   };
 }
