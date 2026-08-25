@@ -1,9 +1,18 @@
 import { GAME_CONFIG } from '../config/gameConfig';
+import { InputManager } from './input/InputManager';
+import { Vector2 } from './math/Vector2';
 import type { Entity } from '../entities/Entity';
+import { Player } from '../entities/Player';
 import { Renderer } from '../rendering/Renderer';
 
 export class Game {
-  private readonly entities: Entity[] = [];
+  private readonly input = new InputManager();
+  private readonly player = new Player(
+    new Vector2(GAME_CONFIG.worldWidth / 2, GAME_CONFIG.worldHeight / 2),
+    this.input,
+  );
+
+  private readonly entities: Entity[] = [this.player];
   private loopFps = 0;
   private renderedFrames = 0;
 
@@ -13,6 +22,11 @@ export class Game {
     for (const entity of this.entities) {
       entity.update(deltaTime);
     }
+
+    this.player.constrainToWorld(
+      GAME_CONFIG.worldWidth,
+      GAME_CONFIG.worldHeight,
+    );
   }
 
   public render(): void {
@@ -26,23 +40,24 @@ export class Game {
 
     this.renderer.drawText(
       'DescolasBall',
-      GAME_CONFIG.worldWidth / 2,
-      GAME_CONFIG.worldHeight / 2 - 24,
+      32,
+      40,
       {
         color: GAME_CONFIG.accentColor,
-        font: '700 64px system-ui, sans-serif',
-        align: 'center',
+        font: '700 34px system-ui, sans-serif',
       },
     );
     this.renderer.drawText(
       `Loop ativo · ${Math.round(this.loopFps)} FPS · frame ${this.renderedFrames}`,
-      GAME_CONFIG.worldWidth / 2,
-      GAME_CONFIG.worldHeight / 2 + 42,
+      32,
+      78,
       {
-        font: '22px system-ui, sans-serif',
-        align: 'center',
+        font: '18px system-ui, sans-serif',
       },
     );
+    this.renderer.drawText('Mover: WASD ou setas', 32, 108, {
+      font: '16px system-ui, sans-serif',
+    });
     this.renderer.endFrame();
   }
 
@@ -51,6 +66,7 @@ export class Game {
   }
 
   public dispose(): void {
+    this.input.dispose();
     this.renderer.dispose();
   }
 }

@@ -40,6 +40,28 @@ export class Renderer {
     this.context.fillText(text, x, y);
   }
 
+  public drawCircle(
+    x: number,
+    y: number,
+    radius: number,
+    options: {
+      fillColor: string;
+      strokeColor?: string;
+      lineWidth?: number;
+    },
+  ): void {
+    this.context.beginPath();
+    this.context.arc(x, y, radius, 0, Math.PI * 2);
+    this.context.fillStyle = options.fillColor;
+    this.context.fill();
+
+    if (options.strokeColor && options.lineWidth) {
+      this.context.strokeStyle = options.strokeColor;
+      this.context.lineWidth = options.lineWidth;
+      this.context.stroke();
+    }
+  }
+
   public drawEntity(entity: Entity): void {
     entity.render(this);
   }
