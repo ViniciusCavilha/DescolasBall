@@ -1,5 +1,5 @@
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 720;
+const WORLD_WIDTH = 1600;
+const WORLD_HEIGHT = 900;
 
 export const GAME_CONFIG = {
   worldWidth: WORLD_WIDTH,

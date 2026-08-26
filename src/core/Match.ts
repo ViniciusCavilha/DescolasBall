@@ -4,6 +4,7 @@ export type MatchState =
   | 'waiting'
   | 'countdown'
   | 'playing'
+  | 'paused'
   | 'goal'
   | 'finished';
 
@@ -17,6 +18,7 @@ export interface MatchView {
   clockText: string;
   overlayText: string | null;
   restartHint: boolean;
+  state: MatchState;
 }
 
 export interface MatchConfig {
@@ -39,6 +41,17 @@ export class Match {
 
   public isPlaying(): boolean {
     return this.state === 'playing';
+  }
+
+  public togglePause(): boolean {
+    if (this.state === 'playing') { this.state = 'paused'; return true; }
+    if (this.state === 'paused') { this.state = 'playing'; return true; }
+    return false;
+  }
+
+  public restartCountdown(): void {
+    this.stateElapsedSeconds = 0;
+    this.state = 'countdown';
   }
 
   public startNewMatch(): void {
@@ -110,6 +123,7 @@ export class Match {
       clockText: formatClock(this.remainingSeconds),
       overlayText: this.getOverlayText(),
       restartHint: this.state === 'waiting' || this.state === 'finished',
+      state: this.state,
     };
   }
 
@@ -132,6 +146,8 @@ export class Match {
         ? 'GOL DA ESQUERDA!'
         : 'GOL DA DIREITA!';
     }
+
+    if (this.state === 'paused') return 'PARTIDA PAUSADA';
 
     if (this.state === 'finished') {
       if (this.score.left === this.score.right) {

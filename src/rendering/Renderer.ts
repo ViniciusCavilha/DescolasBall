@@ -3,10 +3,12 @@ import type { FieldGeometry } from '../core/field';
 import type { MatchView } from '../core/Match';
 import type { Vector2 } from '../core/math/Vector2';
 import type { Entity } from '../entities/Entity';
+import type { ArenaDefinition } from '../core/arenas';
 
 export class Renderer {
   private scaleX = 1;
   private scaleY = 1;
+  private arena: ArenaDefinition | null = null;
 
   public constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -17,33 +19,37 @@ export class Renderer {
   }
 
   public beginFrame(): void {
+    const goalDepth = this.arena?.goalDepth ?? GAME_CONFIG.field.goalDepth;
     this.context.save();
     this.context.setTransform(
       this.scaleX,
       0,
       0,
       this.scaleY,
-      GAME_CONFIG.field.goalDepth * this.scaleX,
+      goalDepth * this.scaleX,
       0,
     );
   }
 
   public clear(color: string): void {
+    const width = this.arena?.width ?? GAME_CONFIG.worldWidth;
+    const height = this.arena?.height ?? GAME_CONFIG.worldHeight;
+    const goalDepth = this.arena?.goalDepth ?? GAME_CONFIG.field.goalDepth;
     this.context.fillStyle = color;
     this.context.fillRect(
-      -GAME_CONFIG.field.goalDepth,
+      -goalDepth,
       0,
-      GAME_CONFIG.worldWidth + GAME_CONFIG.field.goalDepth * 2,
-      GAME_CONFIG.worldHeight,
+      width + goalDepth * 2,
+      height,
     );
   }
 
   public drawField(field: FieldGeometry): void {
     const fieldConfig = GAME_CONFIG.field;
-    this.context.fillStyle = fieldConfig.surfaceColor;
+    this.context.fillStyle = this.arena?.visual.surfaceColor ?? fieldConfig.surfaceColor;
     this.context.fillRect(0, 0, field.width, field.height);
 
-    this.context.strokeStyle = fieldConfig.lineColor;
+    this.context.strokeStyle = this.arena?.visual.lineColor ?? fieldConfig.lineColor;
     this.context.lineWidth = fieldConfig.lineWidth;
     this.context.beginPath();
     this.context.moveTo(field.width / 2, 0);
@@ -77,7 +83,7 @@ export class Renderer {
     for (const wall of field.walls) {
       this.context.strokeStyle = wall.kind === 'goal'
         ? fieldConfig.goalColor
-        : fieldConfig.lineColor;
+        : (this.arena?.visual.lineColor ?? fieldConfig.lineColor);
       this.context.beginPath();
       this.context.moveTo(wall.start.x, wall.start.y);
       this.context.lineTo(wall.end.x, wall.end.y);
@@ -86,7 +92,7 @@ export class Renderer {
   }
 
   public drawMatchHud(match: MatchView): void {
-    const centerX = GAME_CONFIG.worldWidth / 2;
+    const centerX = (this.arena?.width ?? GAME_CONFIG.worldWidth) / 2;
     this.context.fillStyle = 'rgba(9, 13, 24, 0.82)';
     this.context.fillRect(centerX - 180, 20, 360, 82);
 
@@ -200,12 +206,19 @@ export class Renderer {
     window.removeEventListener('resize', this.resize);
   }
 
+  public setArena(arena: ArenaDefinition): void {
+    this.arena = arena;
+    this.resize();
+  }
+
   private readonly resize = (): void => {
     const availableWidth = window.innerWidth;
     const availableHeight = window.innerHeight;
-    const visibleWorldWidth = GAME_CONFIG.worldWidth
-      + GAME_CONFIG.field.goalDepth * 2;
-    const worldAspectRatio = visibleWorldWidth / GAME_CONFIG.worldHeight;
+    const worldWidth = this.arena?.width ?? GAME_CONFIG.worldWidth;
+    const worldHeight = this.arena?.height ?? GAME_CONFIG.worldHeight;
+    const goalDepth = this.arena?.goalDepth ?? GAME_CONFIG.field.goalDepth;
+    const visibleWorldWidth = worldWidth + goalDepth * 2;
+    const worldAspectRatio = visibleWorldWidth / worldHeight;
 
     let displayWidth = availableWidth;
     let displayHeight = displayWidth / worldAspectRatio;
@@ -222,6 +235,6 @@ export class Renderer {
     this.canvas.height = Math.max(Math.round(displayHeight * pixelRatio), 1);
 
     this.scaleX = this.canvas.width / visibleWorldWidth;
-    this.scaleY = this.canvas.height / GAME_CONFIG.worldHeight;
+    this.scaleY = this.canvas.height / worldHeight;
   };
 }

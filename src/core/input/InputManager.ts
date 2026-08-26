@@ -4,7 +4,9 @@ export type InputAction =
   | 'moveLeft'
   | 'moveRight'
   | 'kick'
-  | 'restartMatch';
+  | 'restartMatch'
+  | 'toggleMenu'
+  | 'closeMenu';
 
 const ACTION_BINDINGS: Readonly<Record<InputAction, readonly string[]>> = {
   moveUp: ['KeyW', 'ArrowUp'],
@@ -13,6 +15,8 @@ const ACTION_BINDINGS: Readonly<Record<InputAction, readonly string[]>> = {
   moveRight: ['KeyD', 'ArrowRight'],
   kick: ['Space'],
   restartMatch: ['KeyR'],
+  toggleMenu: ['Tab'],
+  closeMenu: ['Escape'],
 };
 
 const MANAGED_KEYS = new Set(Object.values(ACTION_BINDINGS).flat());
@@ -51,6 +55,14 @@ export class InputManager {
     window.removeEventListener('blur', this.clearPressedKeys);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     this.clearPressedKeys();
+  }
+
+  public clearGameplayInput(): void {
+    for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']) {
+      this.pressedKeys.delete(code);
+    }
+    this.pressedActions.delete('kick');
+    this.releasedActions.delete('kick');
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {

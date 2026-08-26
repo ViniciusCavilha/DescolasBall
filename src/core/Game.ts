@@ -1,9 +1,5 @@
 import { FIXED_DELTA_TIME, GAME_CONFIG } from '../config/gameConfig';
-import {
-  createFieldGeometry,
-  detectGoalCrossing,
-  hasWallTunnelingRisk,
-} from './field';
+import { detectGoalCrossing, hasWallTunnelingRisk } from './field';
 import {
   detectCircleCollision,
   resolveCircleSegmentCollision,
@@ -14,9 +10,11 @@ import { applyKick } from './kick';
 import { Match } from './Match';
 import { Vector2 } from './math/Vector2';
 import { Ball } from '../entities/Ball';
-import type { Entity } from '../entities/Entity';
 import { Player } from '../entities/Player';
 import { Renderer } from '../rendering/Renderer';
+import { ARENAS, createArenaField, getArena, type ArenaDefinition } from './arenas';
+import { GameSession, type PlayerSide } from './GameSession';
+import { MatchMenu } from '../ui/MatchMenu';
 
 export class Game {
   private static readonly KICK_FEEDBACK_DURATION_SECONDS = 0.12;
@@ -39,20 +37,24 @@ export class Game {
       GAME_CONFIG.ball.initialVelocity.y,
     ),
   );
-  private readonly field = createFieldGeometry(
-    GAME_CONFIG.worldWidth,
-    GAME_CONFIG.worldHeight,
-    GAME_CONFIG.field.goalOpeningSize,
-    GAME_CONFIG.field.goalDepth,
-  );
-
-  private readonly entities: Entity[] = [this.player, this.ball];
+  private arena: ArenaDefinition = ARENAS[0];
+  private field = createArenaField(this.arena);
   private readonly match = new Match(GAME_CONFIG.match);
+  private readonly session = new GameSession();
+  private readonly menu: MatchMenu;
+  private menuOpen = false;
   private kickFeedbackRemainingSeconds = 0;
   private loopFps = 0;
   private renderedFrames = 0;
 
   public constructor(private readonly renderer: Renderer) {
+    this.menu = new MatchMenu(this.session, {
+      close: () => this.setMenuOpen(false),
+      changeSide: (playerId, side) => this.changePlayerSide(playerId, side),
+      togglePause: () => this.togglePause(),
+      changeMap: (mapId) => this.changeMap(mapId),
+    });
+    this.renderer.setArena(this.arena);
     if (
       hasWallTunnelingRisk(
         GAME_CONFIG.ball.maximumSpeed,
@@ -74,6 +76,14 @@ export class Game {
       this.kickFeedbackRemainingSeconds - safeDeltaTime,
       0,
     );
+
+    if (this.input.consumeActionPress('toggleMenu')) this.setMenuOpen(!this.menuOpen);
+    if (this.menuOpen && this.input.consumeActionPress('closeMenu')) this.setMenuOpen(false);
+    if (this.menuOpen) {
+      this.player.cancelKickCharge();
+      this.match.update(deltaTime);
+      return;
+    }
 
     if (this.input.consumeActionPress('restartMatch')) {
       this.match.startNewMatch();
@@ -104,17 +114,18 @@ export class Game {
     kickJustReleased: boolean,
     kickHeld: boolean,
   ): void {
-    this.player.update(deltaTime);
+    const localPlayerActive = this.isLocalPlayerActive();
+    if (localPlayerActive) this.player.update(deltaTime);
     this.player.constrainToWorld(
-      GAME_CONFIG.worldWidth,
-      GAME_CONFIG.worldHeight,
+      this.arena.width,
+      this.arena.height,
     );
 
-    if (kickJustPressed) {
+    if (localPlayerActive && kickJustPressed) {
       this.player.startKickCharge();
     }
 
-    if (kickJustReleased) {
+    if (localPlayerActive && kickJustReleased) {
       const forceMultiplier = this.player.releaseKickCharge();
       if (forceMultiplier !== null) {
         this.tryKick(forceMultiplier);
@@ -127,11 +138,11 @@ export class Game {
     this.ball.update(deltaTime);
     this.resolveBallFieldWalls();
 
-    const collision = detectCircleCollision(
+    const collision = localPlayerActive ? detectCircleCollision(
       this.player,
       this.ball,
       this.player.orientation,
-    );
+    ) : null;
 
     if (collision) {
       const resolution = resolvePlayerBallCollision(
@@ -180,18 +191,17 @@ export class Game {
     this.renderer.clear(GAME_CONFIG.backgroundColor);
     this.renderer.drawField(this.field);
 
-    for (const entity of this.entities) {
-      this.renderer.drawEntity(entity);
-    }
+    if (this.isLocalPlayerActive()) this.renderer.drawEntity(this.player);
+    this.renderer.drawEntity(this.ball);
 
-    if (this.kickFeedbackRemainingSeconds > 0) {
+    if (this.isLocalPlayerActive() && this.kickFeedbackRemainingSeconds > 0) {
       this.renderer.drawKickFeedback(
         this.player.position,
         this.player.radius + 13,
       );
     }
 
-    const kickChargeProgress = this.player.getKickChargeProgress();
+    const kickChargeProgress = this.isLocalPlayerActive() ? this.player.getKickChargeProgress() : null;
     if (kickChargeProgress !== null) {
       this.renderer.drawKickChargeBar(
         this.player.position,
@@ -221,6 +231,7 @@ export class Game {
     });
     this.renderer.drawMatchHud(this.match.getView());
     this.renderer.endFrame();
+    this.menu.render(this.menuOpen, this.arena.id, this.match.getView());
   }
 
   public setLoopFps(fps: number): void {
@@ -229,6 +240,7 @@ export class Game {
 
   public dispose(): void {
     this.input.dispose();
+    this.menu.dispose();
     this.renderer.dispose();
   }
 
@@ -256,15 +268,57 @@ export class Game {
     this.kickFeedbackRemainingSeconds = 0;
     this.player.reset(
       new Vector2(
-        GAME_CONFIG.spawn.playerPosition.x,
-        GAME_CONFIG.spawn.playerPosition.y,
+        this.getLocalSpawn().x,
+        this.getLocalSpawn().y,
       ),
     );
     this.ball.reset(
       new Vector2(
-        GAME_CONFIG.spawn.ballPosition.x,
-        GAME_CONFIG.spawn.ballPosition.y,
+        this.arena.spawns.ball.x,
+        this.arena.spawns.ball.y,
       ),
     );
+  }
+
+  private setMenuOpen(open: boolean): void {
+    this.menuOpen = open;
+    if (open) this.input.clearGameplayInput();
+  }
+
+  private isLocalPlayerActive(): boolean {
+    return this.session.getLocalPlayer().side !== 'SPECTATOR';
+  }
+
+  private getLocalSpawn(): Vector2 {
+    return this.session.getLocalPlayer().side === 'TEAM_B'
+      ? this.arena.spawns.teamB
+      : this.arena.spawns.teamA;
+  }
+
+  private changePlayerSide(playerId: string, side: PlayerSide): void {
+    const authorized = this.session.dispatch({
+      type: 'CHANGE_TEAM', actorId: this.session.localPlayerId, playerId, side,
+    });
+    if (authorized && playerId === this.session.localPlayerId) {
+      this.player.reset(this.getLocalSpawn());
+      this.input.clearGameplayInput();
+    }
+  }
+
+  private togglePause(): void {
+    if (!this.session.dispatch({ type: 'PAUSE_MATCH', actorId: this.session.localPlayerId })) return;
+    this.match.togglePause();
+    this.player.cancelKickCharge();
+  }
+
+  private changeMap(mapId: string): void {
+    if (!this.session.dispatch({ type: 'CHANGE_MAP', actorId: this.session.localPlayerId, mapId })) return;
+    const nextArena = getArena(mapId);
+    if (!nextArena || nextArena.id === this.arena.id) return;
+    this.arena = nextArena;
+    this.field = createArenaField(nextArena);
+    this.renderer.setArena(nextArena);
+    this.resetEntities();
+    this.match.restartCountdown();
   }
 }
