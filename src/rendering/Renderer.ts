@@ -180,6 +180,23 @@ export class Renderer {
     window.removeEventListener('resize', this.resize);
   }
 
+  public drawFacingIndicator(
+    position: Vector2,
+    facingDirection: Vector2,
+    playerRadius: number,
+  ): void {
+    const direction = facingDirection.normalize();
+    if (direction.magnitude() === 0) return;
+    const indicatorPosition = position.add(
+      direction.scale(playerRadius * 0.62),
+    );
+    this.drawCircle(indicatorPosition.x, indicatorPosition.y, 5, {
+      fillColor: '#07101d',
+      strokeColor: GAME_CONFIG.player.strokeColor,
+      lineWidth: 2,
+    });
+  }
+
   public setArena(arena: ArenaDefinition): void {
     this.arena = arena;
     this.resize();

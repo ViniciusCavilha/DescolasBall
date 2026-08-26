@@ -141,7 +141,7 @@ export class Game {
     const collision = localPlayerActive ? detectCircleCollision(
       this.player,
       this.ball,
-      this.player.orientation,
+      this.player.facingDirection,
     ) : null;
 
     if (collision) {
@@ -173,6 +173,7 @@ export class Game {
       this.player,
       this.ball,
       GAME_CONFIG.player.kickRange,
+      GAME_CONFIG.player.kickConeHalfAngleDegrees,
       GAME_CONFIG.player.kickForce * forceMultiplier,
       GAME_CONFIG.ball.maximumSpeed,
     );

@@ -10,7 +10,7 @@ export type KickState = 'idle' | 'charging' | 'ready' | 'cooldown';
 export class Player implements Entity {
   public position: Vector2;
   public velocity = Vector2.ZERO;
-  public orientation = new Vector2(1, 0);
+  public facingDirection = new Vector2(1, 0);
   private kickState: KickState = 'idle';
   private kickChargeSeconds = 0;
   private kickCooldownRemainingSeconds = 0;
@@ -58,7 +58,7 @@ export class Player implements Entity {
     const inputDirection = this.getInputDirection();
 
     if (inputDirection.magnitude() > 0) {
-      this.orientation = inputDirection;
+      this.facingDirection = inputDirection;
       const targetVelocity = inputDirection.scale(this.maximumSpeed);
       this.velocity = this.approachVelocity(
         targetVelocity,
@@ -87,6 +87,11 @@ export class Player implements Entity {
       strokeColor: GAME_CONFIG.player.strokeColor,
       lineWidth: GAME_CONFIG.player.strokeWidth,
     });
+    renderer.drawFacingIndicator(
+      this.position,
+      this.facingDirection,
+      this.radius,
+    );
   }
 
   public constrainToWorld(worldWidth: number, worldHeight: number): void {
@@ -107,7 +112,7 @@ export class Player implements Entity {
   public reset(position: Vector2): void {
     this.position = position;
     this.velocity = Vector2.ZERO;
-    this.orientation = new Vector2(1, 0);
+    this.facingDirection = new Vector2(1, 0);
     this.kickState = 'idle';
     this.kickChargeSeconds = 0;
     this.kickCooldownRemainingSeconds = 0;
