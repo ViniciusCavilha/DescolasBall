@@ -9,6 +9,10 @@ export const GAME_CONFIG = {
   backgroundColor: '#10182b',
   accentColor: '#5ee7a8',
   textColor: '#f6f8ff',
+  ui: {
+    teamA: { name: 'TEAM A', color: '#ff4d6d' },
+    teamB: { name: 'TEAM B', color: '#4da3ff' },
+  },
   player: {
     radius: 32,
     maximumSpeed: 320,

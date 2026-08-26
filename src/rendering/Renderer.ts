@@ -1,6 +1,5 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import type { FieldGeometry } from '../core/field';
-import type { MatchView } from '../core/Match';
 import type { Vector2 } from '../core/math/Vector2';
 import type { Entity } from '../entities/Entity';
 import type { ArenaDefinition } from '../core/arenas';
@@ -91,44 +90,6 @@ export class Renderer {
     }
   }
 
-  public drawMatchHud(match: MatchView): void {
-    const centerX = (this.arena?.width ?? GAME_CONFIG.worldWidth) / 2;
-    this.context.fillStyle = 'rgba(9, 13, 24, 0.82)';
-    this.context.fillRect(centerX - 180, 20, 360, 82);
-
-    this.drawText(
-      `ESQUERDA  ${match.score.left}  ×  ${match.score.right}  DIREITA`,
-      centerX,
-      47,
-      {
-        font: '700 24px system-ui, sans-serif',
-        align: 'center',
-      },
-    );
-    this.drawText(match.clockText, centerX, 79, {
-      color: GAME_CONFIG.accentColor,
-      font: '700 20px ui-monospace, monospace',
-      align: 'center',
-    });
-
-    if (match.overlayText) {
-      this.context.fillStyle = 'rgba(9, 13, 24, 0.72)';
-      this.context.fillRect(centerX - 260, 125, 520, 135);
-      this.drawText(match.overlayText, centerX, 170, {
-        color: GAME_CONFIG.accentColor,
-        font: '800 48px system-ui, sans-serif',
-        align: 'center',
-      });
-
-      if (match.restartHint) {
-        this.drawText('Pressione R para iniciar uma nova partida', centerX, 225, {
-          font: '18px system-ui, sans-serif',
-          align: 'center',
-        });
-      }
-    }
-  }
-
   public drawText(
     text: string,
     x: number,
@@ -181,13 +142,18 @@ export class Renderer {
   }
 
   public drawKickChargeBar(position: Vector2, progress: number): void {
-    const width = 90;
-    const height = 12;
+    const width = 104;
+    const height = 14;
     const x = position.x - width / 2;
     const y = position.y + GAME_CONFIG.player.radius + 14;
     const safeProgress = Math.min(Math.max(progress, 0), 1);
 
-    this.context.fillStyle = 'rgba(9, 13, 24, 0.85)';
+    this.context.save();
+    if (safeProgress >= 1) {
+      this.context.shadowColor = '#ffd166';
+      this.context.shadowBlur = 16;
+    }
+    this.context.fillStyle = 'rgba(9, 13, 24, 0.92)';
     this.context.fillRect(x, y, width, height);
     this.context.fillStyle = safeProgress >= 1
       ? '#ffd166'
@@ -196,6 +162,14 @@ export class Renderer {
     this.context.strokeStyle = GAME_CONFIG.textColor;
     this.context.lineWidth = 2;
     this.context.strokeRect(x, y, width, height);
+    if (safeProgress >= 1) {
+      this.drawText('⚡ READY', position.x, y + height + 16, {
+        color: '#ffd166',
+        font: '800 15px system-ui, sans-serif',
+        align: 'center',
+      });
+    }
+    this.context.restore();
   }
 
   public endFrame(): void {

@@ -15,6 +15,7 @@ import { Renderer } from '../rendering/Renderer';
 import { ARENAS, createArenaField, getArena, type ArenaDefinition } from './arenas';
 import { GameSession, type PlayerSide } from './GameSession';
 import { MatchMenu } from '../ui/MatchMenu';
+import { MatchHud } from '../ui/MatchHud';
 
 export class Game {
   private static readonly KICK_FEEDBACK_DURATION_SECONDS = 0.12;
@@ -42,10 +43,9 @@ export class Game {
   private readonly match = new Match(GAME_CONFIG.match);
   private readonly session = new GameSession();
   private readonly menu: MatchMenu;
+  private readonly hud = new MatchHud();
   private menuOpen = false;
   private kickFeedbackRemainingSeconds = 0;
-  private loopFps = 0;
-  private renderedFrames = 0;
 
   public constructor(private readonly renderer: Renderer) {
     this.menu = new MatchMenu(this.session, {
@@ -186,7 +186,6 @@ export class Game {
   }
 
   public render(): void {
-    this.renderedFrames += 1;
     this.renderer.beginFrame();
     this.renderer.clear(GAME_CONFIG.backgroundColor);
     this.renderer.drawField(this.field);
@@ -209,38 +208,22 @@ export class Game {
       );
     }
 
-    this.renderer.drawText(
-      'DescolasBall',
-      32,
-      40,
-      {
-        color: GAME_CONFIG.accentColor,
-        font: '700 34px system-ui, sans-serif',
-      },
-    );
-    this.renderer.drawText(
-      `Loop ativo · ${Math.round(this.loopFps)} FPS · frame ${this.renderedFrames}`,
-      32,
-      78,
-      {
-        font: '18px system-ui, sans-serif',
-      },
-    );
-    this.renderer.drawText('Mover: WASD/setas · Chutar: ESPAÇO', 32, 108, {
-      font: '16px system-ui, sans-serif',
-    });
-    this.renderer.drawMatchHud(this.match.getView());
     this.renderer.endFrame();
-    this.menu.render(this.menuOpen, this.arena.id, this.match.getView());
+    const matchView = this.match.getView();
+    this.hud.render({
+      match: matchView,
+      localSide: this.session.getLocalPlayer().side,
+      menuOpen: this.menuOpen,
+    });
+    this.menu.render(this.menuOpen, this.arena.id, matchView);
   }
 
-  public setLoopFps(fps: number): void {
-    this.loopFps = fps;
-  }
+  public setLoopFps(_fps: number): void {}
 
   public dispose(): void {
     this.input.dispose();
     this.menu.dispose();
+    this.hud.dispose();
     this.renderer.dispose();
   }
 

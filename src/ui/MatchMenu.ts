@@ -28,8 +28,24 @@ export class MatchMenu {
     const panel = document.createElement('div'); panel.className = 'match-menu__panel';
     const mapName = ARENAS.find((map) => map.id === mapId)?.name ?? mapId;
     panel.innerHTML = `<header><h1>DESCOLASBALL</h1><span>${isHost ? 'HOST' : 'JOGADOR'}</span></header><p>Mapa: ${mapName} · Placar ${match.score.left} × ${match.score.right}</p><h2>Jogadores</h2>`;
-    for (const player of this.session.getPlayers()) {
-      const row = document.createElement('div'); row.className = 'match-menu__player';
+    const sideOrder = { TEAM_A: 0, TEAM_B: 1, SPECTATOR: 2 } as const;
+    const players = [...this.session.getPlayers()]
+      .sort((a, b) => sideOrder[a.side] - sideOrder[b.side]);
+    let currentSide: PlayerSide | null = null;
+    for (const player of players) {
+      if (player.side !== currentSide) {
+        currentSide = player.side;
+        const heading = document.createElement('h3');
+        heading.className = 'match-menu__side match-menu__side--'
+          + player.side.toLowerCase();
+        heading.textContent = player.side === 'SPECTATOR'
+          ? 'ESPECTADORES'
+          : player.side.replace('_', ' ');
+        panel.append(heading);
+      }
+      const row = document.createElement('div');
+      row.className = 'match-menu__player match-menu__player--'
+        + player.side.toLowerCase();
       const label = document.createElement('span');
       label.textContent = `${player.name}${player.role === 'HOST' ? ' ★' : ''} — ${player.side}`; row.append(label);
       if (isHost) for (const side of ['TEAM_A', 'TEAM_B', 'SPECTATOR'] as const) {
