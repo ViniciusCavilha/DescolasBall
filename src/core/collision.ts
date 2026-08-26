@@ -69,7 +69,8 @@ export function resolvePlayerBallCollision(
   player: MovingCircle,
   ball: MovingCircle,
   collision: CircleCollisionInfo,
-  transferFactor: number,
+  restitution: number,
+  tangentialDamping: number,
   maximumBallSpeed: number,
 ): BallCollisionResolution {
   const normal = collision.normal.normalize();
@@ -81,32 +82,36 @@ export function resolvePlayerBallCollision(
   const playerVelocity = player.velocity.isFinite()
     ? player.velocity
     : Vector2.ZERO;
-  let ballVelocity = ball.velocity.isFinite()
+  const ballVelocity = ball.velocity.isFinite()
     ? ball.velocity
     : Vector2.ZERO;
-
-  const playerNormalSpeed = playerVelocity.dot(safeNormal);
-  const ballNormalSpeed = ballVelocity.dot(safeNormal);
-  const safeTransferFactor = Number.isFinite(transferFactor)
-    ? Math.max(transferFactor, 0)
-    : 0;
-  const targetNormalSpeed = playerNormalSpeed > 0
-    ? playerNormalSpeed * safeTransferFactor
-    : 0;
-
-  if (ballNormalSpeed < targetNormalSpeed) {
-    ballVelocity = ballVelocity.add(
-      safeNormal.scale(targetNormalSpeed - ballNormalSpeed),
+  const relativeVelocity = ballVelocity.subtract(playerVelocity);
+  const relativeNormalSpeed = relativeVelocity.dot(safeNormal);
+  let resolvedVelocity = ballVelocity;
+  if (relativeNormalSpeed < 0) {
+    const safeRestitution = Number.isFinite(restitution)
+      ? Math.min(Math.max(restitution, 0), 1)
+      : 0;
+    const safeTangentialDamping = Number.isFinite(tangentialDamping)
+      ? Math.min(Math.max(tangentialDamping, 0), 1)
+      : 0;
+    const tangentialVelocity = relativeVelocity
+      .subtract(safeNormal.scale(relativeNormalSpeed))
+      .scale(1 - safeTangentialDamping);
+    const reflectedNormalVelocity = safeNormal.scale(
+      -relativeNormalSpeed * safeRestitution,
     );
+    resolvedVelocity = playerVelocity
+      .add(tangentialVelocity)
+      .add(reflectedNormalVelocity);
   }
-
-  ballVelocity = ballVelocity.clampMagnitude(maximumBallSpeed);
+  resolvedVelocity = resolvedVelocity.clampMagnitude(maximumBallSpeed);
 
   return {
     position: correctedPosition.isFinite()
       ? correctedPosition
       : ball.position,
-    velocity: ballVelocity.isFinite() ? ballVelocity : Vector2.ZERO,
+    velocity: resolvedVelocity.isFinite() ? resolvedVelocity : Vector2.ZERO,
   };
 }
 

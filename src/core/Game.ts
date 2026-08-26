@@ -141,38 +141,44 @@ export class Game {
       this.player.cancelKickCharge();
     }
 
+    const relativeSpeed = this.ball.velocity.magnitude()
+      + (localPlayerActive ? this.player.velocity.magnitude() : 0);
+    const substeps = Math.min(Math.max(Math.ceil(
+      relativeSpeed * deltaTime / GAME_CONFIG.ball.maximumStepDistance,
+    ), 1), GAME_CONFIG.ball.maximumPhysicsSubsteps);
+    const substepDelta = deltaTime / substeps;
+    for (let step = 0; step < substeps; step += 1) {
+      if (this.updateBallPhysics(substepDelta, localPlayerActive)) return;
+    }
+  }
+
+  private updateBallPhysics(deltaTime: number, playerActive: boolean): boolean {
     const previousBallPosition = this.ball.position;
     this.ball.update(deltaTime);
     this.resolveBallFieldWalls(previousBallPosition);
-
-    const collision = localPlayerActive ? detectCircleCollision(
-      this.player,
-      this.ball,
-      this.player.facingDirection,
+    const collision = playerActive ? detectCircleCollision(
+      this.player, this.ball, this.player.facingDirection,
     ) : null;
-
     if (collision) {
       const resolution = resolvePlayerBallCollision(
         this.player,
         this.ball,
         collision,
-        GAME_CONFIG.ball.collisionTransferFactor,
+        GAME_CONFIG.ball.playerCollisionRestitution,
+        GAME_CONFIG.ball.playerCollisionTangentialDamping,
         GAME_CONFIG.ball.maximumSpeed,
       );
       this.ball.position = resolution.position;
       this.ball.velocity = resolution.velocity;
-      this.resolveBallFieldWalls();
+      this.resolveBallFieldWalls(previousBallPosition);
     }
-
     const scoringSide = detectGoalCrossing(
-      previousBallPosition,
-      this.ball.position,
-      this.field,
+      previousBallPosition, this.ball.position, this.field,
     );
-    if (scoringSide) {
-      this.match.registerGoal(scoringSide);
-      this.resetEntities();
-    }
+    if (!scoringSide) return false;
+    this.match.registerGoal(scoringSide);
+    this.resetEntities();
+    return true;
   }
 
   private tryKick(forceMultiplier: number): void {

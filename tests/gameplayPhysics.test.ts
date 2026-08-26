@@ -19,9 +19,28 @@ describe('nova escala do Player', () => {
     const ball = { position: new Vector2(40, 0), velocity: Vector2.ZERO, radius: 18 };
     const collision = detectCircleCollision(player, ball);
     assert.ok(collision);
-    const result = resolvePlayerBallCollision(player, ball, collision, 1.05, 1800);
+    const result = resolvePlayerBallCollision(player, ball, collision, 0.35, 0.08, 1800);
     assert.equal(result.position.x, 43);
     assert.ok(result.velocity.x > 0 && result.velocity.x <= 1800);
+  });
+
+  test('Ball que atinge Player parado ricocheteia em vez de morrer', () => {
+    const player = { position: Vector2.ZERO, velocity: Vector2.ZERO, radius: 25 };
+    const ball = { position: new Vector2(42, 0), velocity: new Vector2(-1000, 0), radius: 18 };
+    const collision = detectCircleCollision(player, ball);
+    assert.ok(collision);
+    const result = resolvePlayerBallCollision(player, ball, collision, 0.35, 0.08, 1800);
+    assert.equal(result.velocity.x, 350);
+  });
+
+  test('Player empurra a Ball com resposta clara e limitada', () => {
+    const player = { position: Vector2.ZERO, velocity: new Vector2(310, 0), radius: 25 };
+    const ball = { position: new Vector2(42, 0), velocity: Vector2.ZERO, radius: 18 };
+    const collision = detectCircleCollision(player, ball);
+    assert.ok(collision);
+    const result = resolvePlayerBallCollision(player, ball, collision, 0.35, 0.08, 1800);
+    assert.ok(result.velocity.x > player.velocity.x);
+    assert.ok(result.velocity.magnitude() <= 1800);
   });
 });
 
