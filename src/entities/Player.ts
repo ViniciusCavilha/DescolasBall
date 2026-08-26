@@ -5,10 +5,14 @@ import { clampCircleToWorldBounds } from '../core/math/worldBounds';
 import type { Renderer } from '../rendering/Renderer';
 import type { Entity } from './Entity';
 
+export type KickState = 'idle' | 'charging' | 'ready' | 'cooldown';
+
 export class Player implements Entity {
   public position: Vector2;
   public velocity = Vector2.ZERO;
   public orientation = new Vector2(1, 0);
+  private kickState: KickState = 'idle';
+  private kickChargeSeconds = 0;
   private kickCooldownRemainingSeconds = 0;
 
   public readonly radius = GAME_CONFIG.player.radius;
@@ -31,6 +35,25 @@ export class Player implements Entity {
       this.kickCooldownRemainingSeconds - safeDeltaTime,
       0,
     );
+    if (
+      this.kickState === 'cooldown'
+      && this.kickCooldownRemainingSeconds <= 0
+    ) {
+      this.kickState = 'idle';
+    }
+
+    if (this.kickState === 'charging') {
+      this.kickChargeSeconds = Math.min(
+        this.kickChargeSeconds + safeDeltaTime,
+        GAME_CONFIG.player.powerShotChargeSeconds,
+      );
+      if (
+        this.kickChargeSeconds
+        >= GAME_CONFIG.player.powerShotChargeSeconds
+      ) {
+        this.kickState = 'ready';
+      }
+    }
 
     const inputDirection = this.getInputDirection();
 
@@ -85,14 +108,54 @@ export class Player implements Entity {
     this.position = position;
     this.velocity = Vector2.ZERO;
     this.orientation = new Vector2(1, 0);
+    this.kickState = 'idle';
+    this.kickChargeSeconds = 0;
     this.kickCooldownRemainingSeconds = 0;
   }
 
-  public canKick(): boolean {
-    return this.kickCooldownRemainingSeconds <= 0;
+  public startKickCharge(): void {
+    if (this.kickState !== 'idle') {
+      return;
+    }
+
+    this.kickState = 'charging';
+    this.kickChargeSeconds = 0;
+  }
+
+  public releaseKickCharge(): number | null {
+    if (this.kickState !== 'charging' && this.kickState !== 'ready') {
+      return null;
+    }
+
+    const multiplier = this.kickState === 'ready'
+      ? GAME_CONFIG.player.powerShotMultiplier
+      : 1;
+    this.kickState = 'idle';
+    this.kickChargeSeconds = 0;
+    return multiplier;
+  }
+
+  public cancelKickCharge(): void {
+    if (this.kickState === 'charging' || this.kickState === 'ready') {
+      this.kickState = 'idle';
+      this.kickChargeSeconds = 0;
+    }
+  }
+
+  public getKickChargeProgress(): number | null {
+    if (this.kickState !== 'charging' && this.kickState !== 'ready') {
+      return null;
+    }
+
+    return Math.min(
+      this.kickChargeSeconds / GAME_CONFIG.player.powerShotChargeSeconds,
+      1,
+    );
   }
 
   public startKickCooldown(): void {
+    this.kickState = 'cooldown';
+    this.kickChargeSeconds = 0;
     this.kickCooldownRemainingSeconds = GAME_CONFIG.player.kickCooldownSeconds;
   }
 

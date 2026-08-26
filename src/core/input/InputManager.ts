@@ -20,6 +20,7 @@ const MANAGED_KEYS = new Set(Object.values(ACTION_BINDINGS).flat());
 export class InputManager {
   private readonly pressedKeys = new Set<string>();
   private readonly pressedActions = new Set<InputAction>();
+  private readonly releasedActions = new Set<InputAction>();
 
   public constructor() {
     window.addEventListener('keydown', this.handleKeyDown);
@@ -36,6 +37,12 @@ export class InputManager {
     const wasPressed = this.pressedActions.has(action);
     this.pressedActions.delete(action);
     return wasPressed;
+  }
+
+  public consumeActionRelease(action: InputAction): boolean {
+    const wasReleased = this.releasedActions.has(action);
+    this.releasedActions.delete(action);
+    return wasReleased;
   }
 
   public dispose(): void {
@@ -65,6 +72,10 @@ export class InputManager {
     }
 
     event.preventDefault();
+    const action = this.findAction(event.code);
+    if (this.pressedKeys.has(event.code) && action) {
+      this.releasedActions.add(action);
+    }
     this.pressedKeys.delete(event.code);
   };
 
@@ -77,6 +88,7 @@ export class InputManager {
   private readonly clearPressedKeys = (): void => {
     this.pressedKeys.clear();
     this.pressedActions.clear();
+    this.releasedActions.clear();
   };
 
   private findAction(key: string): InputAction | null {

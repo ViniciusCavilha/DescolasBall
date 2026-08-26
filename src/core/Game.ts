@@ -81,37 +81,46 @@ export class Game {
     }
 
     const kickJustPressed = this.input.consumeActionPress('kick');
+    const kickJustReleased = this.input.consumeActionRelease('kick');
+    const kickHeld = this.input.isActionActive('kick');
     const wasPlaying = this.match.isPlaying();
     this.match.update(deltaTime);
     if (!wasPlaying || !this.match.isPlaying()) {
+      this.player.cancelKickCharge();
       return;
     }
 
-    this.updatePhysics(deltaTime, kickJustPressed);
+    this.updatePhysics(
+      deltaTime,
+      kickJustPressed,
+      kickJustReleased,
+      kickHeld,
+    );
   }
 
-  private updatePhysics(deltaTime: number, kickJustPressed: boolean): void {
+  private updatePhysics(
+    deltaTime: number,
+    kickJustPressed: boolean,
+    kickJustReleased: boolean,
+    kickHeld: boolean,
+  ): void {
     this.player.update(deltaTime);
     this.player.constrainToWorld(
       GAME_CONFIG.worldWidth,
       GAME_CONFIG.worldHeight,
     );
 
-    if (kickJustPressed && this.player.canKick()) {
-      const kick = applyKick(
-        this.player,
-        this.ball,
-        GAME_CONFIG.player.kickRange,
-        GAME_CONFIG.player.kickForce,
-        GAME_CONFIG.ball.maximumSpeed,
-      );
+    if (kickJustPressed) {
+      this.player.startKickCharge();
+    }
 
-      if (kick) {
-        this.ball.position = kick.position;
-        this.ball.velocity = kick.velocity;
-        this.player.startKickCooldown();
-        this.kickFeedbackRemainingSeconds = Game.KICK_FEEDBACK_DURATION_SECONDS;
+    if (kickJustReleased) {
+      const forceMultiplier = this.player.releaseKickCharge();
+      if (forceMultiplier !== null) {
+        this.tryKick(forceMultiplier);
       }
+    } else if (!kickHeld) {
+      this.player.cancelKickCharge();
     }
 
     const previousBallPosition = this.ball.position;
@@ -148,6 +157,23 @@ export class Game {
     }
   }
 
+  private tryKick(forceMultiplier: number): void {
+    const kick = applyKick(
+      this.player,
+      this.ball,
+      GAME_CONFIG.player.kickRange,
+      GAME_CONFIG.player.kickForce * forceMultiplier,
+      GAME_CONFIG.ball.maximumSpeed,
+    );
+
+    if (kick) {
+      this.ball.position = kick.position;
+      this.ball.velocity = kick.velocity;
+      this.player.startKickCooldown();
+      this.kickFeedbackRemainingSeconds = Game.KICK_FEEDBACK_DURATION_SECONDS;
+    }
+  }
+
   public render(): void {
     this.renderedFrames += 1;
     this.renderer.beginFrame();
@@ -162,6 +188,14 @@ export class Game {
       this.renderer.drawKickFeedback(
         this.player.position,
         this.player.radius + 13,
+      );
+    }
+
+    const kickChargeProgress = this.player.getKickChargeProgress();
+    if (kickChargeProgress !== null) {
+      this.renderer.drawKickChargeBar(
+        this.player.position,
+        kickChargeProgress,
       );
     }
 

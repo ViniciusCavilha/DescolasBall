@@ -174,6 +174,24 @@ export class Renderer {
     this.context.stroke();
   }
 
+  public drawKickChargeBar(position: Vector2, progress: number): void {
+    const width = 90;
+    const height = 12;
+    const x = position.x - width / 2;
+    const y = position.y + GAME_CONFIG.player.radius + 14;
+    const safeProgress = Math.min(Math.max(progress, 0), 1);
+
+    this.context.fillStyle = 'rgba(9, 13, 24, 0.85)';
+    this.context.fillRect(x, y, width, height);
+    this.context.fillStyle = safeProgress >= 1
+      ? '#ffd166'
+      : GAME_CONFIG.accentColor;
+    this.context.fillRect(x + 2, y + 2, (width - 4) * safeProgress, height - 4);
+    this.context.strokeStyle = GAME_CONFIG.textColor;
+    this.context.lineWidth = 2;
+    this.context.strokeRect(x, y, width, height);
+  }
+
   public endFrame(): void {
     this.context.restore();
   }
