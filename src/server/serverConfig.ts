@@ -9,6 +9,6 @@ export const SERVER_CONFIG = {
   networkSendRate: 20,
   matchId: 'default',
   world: { width: 1600, height: 900 },
-  player: { radius: 32, maximumSpeed: 320 },
+  player: { radius: 25, maximumSpeed: 320 },
   matchDurationSeconds: 5 * 60,
 } as const;

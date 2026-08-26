@@ -82,16 +82,18 @@ export class Player implements Entity {
   }
 
   public render(renderer: Renderer): void {
+    this.renderForViewer(renderer, true);
+  }
+
+  public renderForViewer(renderer: Renderer, showFacingIndicator: boolean): void {
     renderer.drawCircle(this.position.x, this.position.y, this.radius, {
       fillColor: GAME_CONFIG.player.fillColor,
       strokeColor: GAME_CONFIG.player.strokeColor,
       lineWidth: GAME_CONFIG.player.strokeWidth,
     });
-    renderer.drawFacingIndicator(
-      this.position,
-      this.facingDirection,
-      this.radius,
-    );
+    if (showFacingIndicator) {
+      renderer.drawFacingIndicator(this.position, this.facingDirection, this.radius);
+    }
   }
 
   public constrainToWorld(worldWidth: number, worldHeight: number): void {

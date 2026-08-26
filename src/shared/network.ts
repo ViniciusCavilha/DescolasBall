@@ -8,6 +8,7 @@ export interface NetworkInput {
 }
 export interface NetworkPlayerState {
   id: string; position: NetworkVector; velocity: NetworkVector;
+  facingDirection: NetworkVector;
   side: NetworkPlayerSide; role: NetworkPlayerRole;
 }
 export interface NetworkBallState { position: NetworkVector; velocity: NetworkVector; }
@@ -95,7 +96,7 @@ function isSnapshot(value: unknown): value is NetworkMatchSnapshot {
 }
 function isPlayer(value: unknown): value is NetworkPlayerState {
   return isRecord(value) && isString(value.id) && isVector(value.position)
-    && isVector(value.velocity)
+    && isVector(value.velocity) && isVector(value.facingDirection)
     && (value.side === 'TEAM_A' || value.side === 'TEAM_B' || value.side === 'SPECTATOR')
     && (value.role === 'HOST' || value.role === 'PLAYER');
 }

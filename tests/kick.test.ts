@@ -6,9 +6,10 @@ import type { InputAction, InputManager } from '../src/core/input/InputManager.t
 import { applyKick, isInsideKickCone } from '../src/core/kick.ts';
 import { Vector2 } from '../src/core/math/Vector2.ts';
 
-const RANGE = 100;
+const RANGE = 82;
 const HALF_ANGLE = 55;
-const FORCE = 600;
+const FORCE = 680;
+const VELOCITY_RETENTION = 0.35;
 const MAXIMUM_SPEED = 1800;
 
 function playerStub(facingDirection: Vector2): Player {
@@ -16,7 +17,7 @@ function playerStub(facingDirection: Vector2): Player {
     position: Vector2.ZERO,
     velocity: Vector2.ZERO,
     facingDirection,
-    radius: 32,
+    radius: 25,
   } as Player;
 }
 
@@ -27,6 +28,7 @@ function kick(facing: Vector2, ballPosition: Vector2, multiplier = 1) {
     RANGE,
     HALF_ANGLE,
     FORCE * multiplier,
+    VELOCITY_RETENTION,
     MAXIMUM_SPEED,
   );
 }
@@ -97,8 +99,22 @@ describe('facingDirection do jogador', () => {
       subject.position.add(new Vector2(0, 70)),
       Vector2.ZERO,
     );
-    const result = applyKick(subject, ball, RANGE, HALF_ANGLE, FORCE * multiplier, MAXIMUM_SPEED);
+    const result = applyKick(subject, ball, RANGE, HALF_ANGLE, FORCE * multiplier, VELOCITY_RETENTION, MAXIMUM_SPEED);
     assert.ok(result);
     assert.deepEqual(result.velocity, new Vector2(0, MAXIMUM_SPEED));
+  });
+
+  test('preserva parte controlada da velocidade existente da bola', () => {
+    const ball = new Ball(new Vector2(60, 0), new Vector2(0, 200));
+    const result = applyKick(playerStub(new Vector2(1, 0)), ball, RANGE, HALF_ANGLE, FORCE, VELOCITY_RETENTION, MAXIMUM_SPEED);
+    assert.ok(result);
+    assert.deepEqual(result.velocity, new Vector2(FORCE, 70));
+  });
+
+  test('velocidade contrária não cancela o impulso do chute', () => {
+    const ball = new Ball(new Vector2(60, 0), new Vector2(-1000, 0));
+    const result = applyKick(playerStub(new Vector2(1, 0)), ball, RANGE, HALF_ANGLE, FORCE, VELOCITY_RETENTION, MAXIMUM_SPEED);
+    assert.ok(result);
+    assert.deepEqual(result.velocity, new Vector2(FORCE, 0));
   });
 });

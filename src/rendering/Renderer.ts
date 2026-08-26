@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from '../config/gameConfig';
 import type { FieldGeometry } from '../core/field';
-import type { Vector2 } from '../core/math/Vector2';
+import { Vector2 } from '../core/math/Vector2';
 import type { Entity } from '../entities/Entity';
 import type { ArenaDefinition } from '../core/arenas';
 
@@ -187,14 +187,42 @@ export class Renderer {
   ): void {
     const direction = facingDirection.normalize();
     if (direction.magnitude() === 0) return;
-    const indicatorPosition = position.add(
-      direction.scale(playerRadius * 0.62),
-    );
-    this.drawCircle(indicatorPosition.x, indicatorPosition.y, 5, {
-      fillColor: '#07101d',
+    const start = position.add(direction.scale(playerRadius * 0.35));
+    const tip = position.add(direction.scale(playerRadius * 1.3));
+    const perpendicular = new Vector2(-direction.y, direction.x);
+    const arrowBase = tip.subtract(direction.scale(8));
+    this.context.save();
+    this.context.strokeStyle = GAME_CONFIG.player.strokeColor;
+    this.context.fillStyle = GAME_CONFIG.accentColor;
+    this.context.lineWidth = 3;
+    this.context.lineCap = 'round';
+    this.context.beginPath();
+    this.context.moveTo(start.x, start.y);
+    this.context.lineTo(tip.x, tip.y);
+    this.context.stroke();
+    this.context.beginPath();
+    this.context.moveTo(tip.x, tip.y);
+    this.context.lineTo(arrowBase.x + perpendicular.x * 5, arrowBase.y + perpendicular.y * 5);
+    this.context.lineTo(arrowBase.x - perpendicular.x * 5, arrowBase.y - perpendicular.y * 5);
+    this.context.closePath();
+    this.context.fill();
+    this.context.restore();
+  }
+
+  public drawRemotePlayer(
+    position: Vector2,
+    facingDirection: Vector2,
+    fillColor: string,
+    showFacingIndicator: boolean,
+  ): void {
+    this.drawCircle(position.x, position.y, GAME_CONFIG.player.radius, {
+      fillColor,
       strokeColor: GAME_CONFIG.player.strokeColor,
-      lineWidth: 2,
+      lineWidth: GAME_CONFIG.player.strokeWidth,
     });
+    if (showFacingIndicator) {
+      this.drawFacingIndicator(position, facingDirection, GAME_CONFIG.player.radius);
+    }
   }
 
   public setArena(arena: ArenaDefinition): void {

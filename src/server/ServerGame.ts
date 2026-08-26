@@ -22,7 +22,7 @@ export class ServerGame {
     const side: NetworkPlayerSide = index % 2 === 0 ? 'TEAM_A' : 'TEAM_B';
     const role: NetworkPlayerRole = index === 0 ? 'HOST' : 'PLAYER';
     const player: AuthoritativePlayer = {
-      id, side, role, velocity: { x: 0, y: 0 },
+      id, side, role, velocity: { x: 0, y: 0 }, facingDirection: { x: 1, y: 0 },
       position: {
         x: side === 'TEAM_A' ? SERVER_CONFIG.world.width * 0.25 : SERVER_CONFIG.world.width * 0.75,
         y: SERVER_CONFIG.world.height / 2,
@@ -48,6 +48,7 @@ export class ServerGame {
       const horizontal = Number(player.input.right) - Number(player.input.left);
       const vertical = Number(player.input.down) - Number(player.input.up);
       const direction = normalize({ x: horizontal, y: vertical });
+      if (direction.x !== 0 || direction.y !== 0) player.facingDirection = direction;
       player.velocity = scale(direction, SERVER_CONFIG.player.maximumSpeed);
       player.position = {
         x: clamp(player.position.x + player.velocity.x * safeDelta, SERVER_CONFIG.player.radius, SERVER_CONFIG.world.width - SERVER_CONFIG.player.radius),
@@ -73,7 +74,8 @@ export class ServerGame {
 
 function toPublicPlayer(player: AuthoritativePlayer): NetworkPlayerState {
   return { id: player.id, side: player.side, role: player.role,
-    position: { ...player.position }, velocity: { ...player.velocity } };
+    position: { ...player.position }, velocity: { ...player.velocity },
+    facingDirection: { ...player.facingDirection } };
 }
 function normalize(value: NetworkVector): NetworkVector {
   const length = Math.hypot(value.x, value.y);

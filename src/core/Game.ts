@@ -17,6 +17,7 @@ import { GameSession, type PlayerSide } from './GameSession';
 import { MatchMenu } from '../ui/MatchMenu';
 import { MatchHud } from '../ui/MatchHud';
 import type { NetworkClient } from '../client/network/NetworkClient';
+import { canViewFacingIndicator } from './playerVisibility';
 
 export class Game {
   private static readonly KICK_FEEDBACK_DURATION_SECONDS = 0.12;
@@ -181,6 +182,7 @@ export class Game {
       GAME_CONFIG.player.kickRange,
       GAME_CONFIG.player.kickConeHalfAngleDegrees,
       GAME_CONFIG.player.kickForce * forceMultiplier,
+      GAME_CONFIG.player.kickExistingVelocityRetention,
       GAME_CONFIG.ball.maximumSpeed,
     );
 
@@ -197,7 +199,8 @@ export class Game {
     this.renderer.clear(GAME_CONFIG.backgroundColor);
     this.renderer.drawField(this.field);
 
-    if (this.isLocalPlayerActive()) this.renderer.drawEntity(this.player);
+    if (this.isLocalPlayerActive()) this.player.renderForViewer(this.renderer, true);
+    this.drawRemotePlayers();
     this.renderer.drawEntity(this.ball);
 
     if (this.isLocalPlayerActive() && this.kickFeedbackRemainingSeconds > 0) {
@@ -283,6 +286,26 @@ export class Game {
       this.networkInputSequence,
       !this.menuOpen && this.isLocalPlayerActive(),
     ));
+  }
+
+  private drawRemotePlayers(): void {
+    const snapshot = this.networkClient?.latestSnapshot;
+    const localNetworkId = this.networkClient?.playerId;
+    if (!snapshot || !localNetworkId) return;
+    const viewer = snapshot.players.find((player) => player.id === localNetworkId);
+    if (!viewer) return;
+    for (const remote of snapshot.players) {
+      if (remote.id === localNetworkId || remote.side === 'SPECTATOR') continue;
+      const fillColor = remote.side === 'TEAM_A'
+        ? GAME_CONFIG.ui.teamA.color
+        : GAME_CONFIG.ui.teamB.color;
+      this.renderer.drawRemotePlayer(
+        new Vector2(remote.position.x, remote.position.y),
+        new Vector2(remote.facingDirection.x, remote.facingDirection.y),
+        fillColor,
+        canViewFacingIndicator(viewer.side, remote.side, false),
+      );
+    }
   }
 
   private isLocalPlayerActive(): boolean {

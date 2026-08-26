@@ -13,6 +13,7 @@ export function applyKick(
   kickRange: number,
   kickConeHalfAngleDegrees: number,
   kickForce: number,
+  existingVelocityRetention: number,
   maximumBallSpeed: number,
 ): KickResult | null {
   const offset = ball.position.subtract(player.position);
@@ -32,8 +33,22 @@ export function applyKick(
     ? resolveCircleOverlap(ball.position, collision)
     : ball.position;
   const safeForce = Number.isFinite(kickForce) ? Math.max(kickForce, 0) : 0;
-  const velocity = direction
-    .scale(safeForce)
+  const safeRetention = Number.isFinite(existingVelocityRetention)
+    ? Math.min(Math.max(existingVelocityRetention, 0), 1)
+    : 0;
+  const existingVelocity = ball.velocity.isFinite()
+    ? ball.velocity
+    : ball.velocity.scale(0);
+  const existingForwardSpeed = existingVelocity.dot(direction);
+  const retainedForwardVelocity = direction.scale(
+    Math.max(existingForwardSpeed, 0) * safeRetention,
+  );
+  const retainedLateralVelocity = existingVelocity
+    .subtract(direction.scale(existingForwardSpeed))
+    .scale(safeRetention);
+  const velocity = direction.scale(safeForce)
+    .add(retainedForwardVelocity)
+    .add(retainedLateralVelocity)
     .clampMagnitude(maximumBallSpeed);
 
   return {

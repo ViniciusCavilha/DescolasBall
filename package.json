@@ -8,6 +8,7 @@
     "build": "tsc && tsc -p tsconfig.server.json && vite build",
     "server": "tsx src/server/index.ts",
     "test:network": "tsx --test tests/network.test.ts",
+    "test:gameplay": "tsx --test tests/kick.test.ts tests/gameplayPhysics.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
