@@ -130,6 +130,7 @@ export function resolveCircleSegmentCollision(
   segmentStart: Vector2,
   segmentEnd: Vector2,
   restitution: number,
+  previousPosition?: Vector2,
 ): SegmentCollisionResolution {
   const segment = segmentEnd.subtract(segmentStart);
   const segmentLengthSquared = segment.dot(segment);
@@ -154,7 +155,7 @@ export function resolveCircleSegmentCollision(
   const offset = circle.position.subtract(closestPoint);
   const distanceSquared = offset.dot(offset);
 
-  if (distanceSquared >= circle.radius * circle.radius) {
+  if (distanceSquared > circle.radius * circle.radius) {
     return {
       position: circle.position,
       velocity: circle.velocity,
@@ -163,11 +164,18 @@ export function resolveCircleSegmentCollision(
   }
 
   const distance = Math.sqrt(Math.max(distanceSquared, 0));
-  const normal = distance > COLLISION_EPSILON
-    ? offset.scale(1 / distance)
-    : getSegmentFallbackNormal(segment, circle.velocity);
-  const overlap = circle.radius - distance;
-  const correctedPosition = circle.position.add(normal.scale(overlap));
+  const previousClosestPoint = previousPosition
+    ? closestPointOnSegment(previousPosition, segmentStart, segment, segmentLengthSquared)
+    : null;
+  const previousOffset = previousPosition && previousClosestPoint
+    ? previousPosition.subtract(previousClosestPoint)
+    : null;
+  const normal = previousOffset && previousOffset.magnitude() > COLLISION_EPSILON
+    ? previousOffset.normalize()
+    : distance > COLLISION_EPSILON
+      ? offset.scale(1 / distance)
+      : getSegmentFallbackNormal(segment, circle.velocity);
+  const correctedPosition = closestPoint.add(normal.scale(circle.radius));
   const safeRestitution = Number.isFinite(restitution)
     ? Math.min(Math.max(restitution, 0), 1)
     : 0;
@@ -188,6 +196,19 @@ export function resolveCircleSegmentCollision(
       : Vector2.ZERO,
     collided: true,
   };
+}
+
+function closestPointOnSegment(
+  point: Vector2,
+  segmentStart: Vector2,
+  segment: Vector2,
+  segmentLengthSquared: number,
+): Vector2 {
+  const progress = Math.min(Math.max(
+    point.subtract(segmentStart).dot(segment) / segmentLengthSquared,
+    0,
+  ), 1);
+  return segmentStart.add(segment.scale(progress));
 }
 
 function getSegmentFallbackNormal(

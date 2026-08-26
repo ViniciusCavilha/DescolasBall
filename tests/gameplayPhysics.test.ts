@@ -77,6 +77,20 @@ describe('ricochete preservado', () => {
     assert.ok(result.velocity.magnitude() <= 1800);
   });
 
+  test('Power Shot rente à parede volta para o campo em vez de desaparecer', () => {
+    const result = resolveCircleSegmentCollision(
+      { position: new Vector2(50, -18), velocity: new Vector2(0, -1800), radius: 18 },
+      new Vector2(0, 0),
+      new Vector2(100, 0),
+      restitution,
+      new Vector2(50, 18),
+    );
+    assert.equal(result.collided, true);
+    assert.deepEqual(result.position, new Vector2(50, 18));
+    assert.ok(result.velocity.y > 0);
+    assert.ok(result.velocity.magnitude() <= 1800);
+  });
+
   test('duas paredes expulsam a Ball do canto', () => {
     let ball = { position: new Vector2(95, 95), velocity: new Vector2(300, 300), radius: 18 };
     const vertical = resolveCircleSegmentCollision(ball, new Vector2(100, 0), new Vector2(100, 100), restitution);

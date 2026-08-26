@@ -143,7 +143,7 @@ export class Game {
 
     const previousBallPosition = this.ball.position;
     this.ball.update(deltaTime);
-    this.resolveBallFieldWalls();
+    this.resolveBallFieldWalls(previousBallPosition);
 
     const collision = localPlayerActive ? detectCircleCollision(
       this.player,
@@ -176,6 +176,7 @@ export class Game {
   }
 
   private tryKick(forceMultiplier: number): void {
+    const previousBallPosition = this.ball.position;
     const kick = applyKick(
       this.player,
       this.ball,
@@ -189,6 +190,7 @@ export class Game {
     if (kick) {
       this.ball.position = kick.position;
       this.ball.velocity = kick.velocity;
+      this.resolveBallFieldWalls(previousBallPosition);
       this.player.startKickCooldown();
       this.kickFeedbackRemainingSeconds = Game.KICK_FEEDBACK_DURATION_SECONDS;
     }
@@ -238,7 +240,7 @@ export class Game {
     this.renderer.dispose();
   }
 
-  private resolveBallFieldWalls(): void {
+  private resolveBallFieldWalls(previousPosition?: Vector2): void {
     for (let pass = 0; pass < 2; pass += 1) {
       for (const wall of this.field.walls) {
         const resolution = resolveCircleSegmentCollision(
@@ -246,6 +248,7 @@ export class Game {
           wall.start,
           wall.end,
           GAME_CONFIG.field.wallRestitution,
+          pass === 0 ? previousPosition : undefined,
         );
 
         if (resolution.collided) {
