@@ -1,3 +1,5 @@
+import type { NetworkInput } from '../../shared/network';
+
 export type InputAction =
   | 'moveUp'
   | 'moveDown'
@@ -63,6 +65,17 @@ export class InputManager {
     }
     this.pressedActions.delete('kick');
     this.releasedActions.delete('kick');
+  }
+
+  public createNetworkInput(sequence: number, gameplayEnabled = true): NetworkInput {
+    return {
+      sequence,
+      up: gameplayEnabled && this.isActionActive('moveUp'),
+      down: gameplayEnabled && this.isActionActive('moveDown'),
+      left: gameplayEnabled && this.isActionActive('moveLeft'),
+      right: gameplayEnabled && this.isActionActive('moveRight'),
+      kick: gameplayEnabled && this.isActionActive('kick'),
+    };
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {

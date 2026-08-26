@@ -16,6 +16,7 @@ import { ARENAS, createArenaField, getArena, type ArenaDefinition } from './aren
 import { GameSession, type PlayerSide } from './GameSession';
 import { MatchMenu } from '../ui/MatchMenu';
 import { MatchHud } from '../ui/MatchHud';
+import type { NetworkClient } from '../client/network/NetworkClient';
 
 export class Game {
   private static readonly KICK_FEEDBACK_DURATION_SECONDS = 0.12;
@@ -45,9 +46,13 @@ export class Game {
   private readonly menu: MatchMenu;
   private readonly hud = new MatchHud();
   private menuOpen = false;
+  private networkInputSequence = 0;
   private kickFeedbackRemainingSeconds = 0;
 
-  public constructor(private readonly renderer: Renderer) {
+  public constructor(
+    private readonly renderer: Renderer,
+    private readonly networkClient: NetworkClient | null = null,
+  ) {
     this.menu = new MatchMenu(this.session, {
       close: () => this.setMenuOpen(false),
       changeSide: (playerId, side) => this.changePlayerSide(playerId, side),
@@ -79,6 +84,7 @@ export class Game {
 
     if (this.input.consumeActionPress('toggleMenu')) this.setMenuOpen(!this.menuOpen);
     if (this.menuOpen && this.input.consumeActionPress('closeMenu')) this.setMenuOpen(false);
+    this.sendNetworkInput();
     if (this.menuOpen) {
       this.player.cancelKickCharge();
       this.match.update(deltaTime);
@@ -225,6 +231,7 @@ export class Game {
     this.input.dispose();
     this.menu.dispose();
     this.hud.dispose();
+    this.networkClient?.disconnect();
     this.renderer.dispose();
   }
 
@@ -267,6 +274,15 @@ export class Game {
   private setMenuOpen(open: boolean): void {
     this.menuOpen = open;
     if (open) this.input.clearGameplayInput();
+  }
+
+  private sendNetworkInput(): void {
+    if (!this.networkClient) return;
+    this.networkInputSequence += 1;
+    this.networkClient.sendInput(this.input.createNetworkInput(
+      this.networkInputSequence,
+      !this.menuOpen && this.isLocalPlayerActive(),
+    ));
   }
 
   private isLocalPlayerActive(): boolean {

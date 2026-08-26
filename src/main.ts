@@ -2,6 +2,7 @@ import './style.css';
 import { Game } from './core/Game';
 import { GameLoop } from './core/GameLoop';
 import { Renderer } from './rendering/Renderer';
+import { NetworkClient } from './client/network/NetworkClient';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas');
 
@@ -16,7 +17,10 @@ if (!context) {
 }
 
 const renderer = new Renderer(canvas, context);
-const game = new Game(renderer);
+const onlineMode = new URLSearchParams(window.location.search).get('mode') === 'online';
+const networkClient = onlineMode ? new NetworkClient() : null;
+networkClient?.connect();
+const game = new Game(renderer, networkClient);
 const gameLoop = new GameLoop(game);
 
 gameLoop.start();
