@@ -18,7 +18,7 @@ export const GAME_CONFIG = {
     kickRange: 76,
     kickForce: 600,
     kickCooldownSeconds: 0.35,
-    powerShotChargeSeconds: 2,
+    powerShotChargeSeconds: 1.5,
     powerShotMultiplier: 3,
     fillColor: '#5ee7a8',
     strokeColor: '#eafff5',
